@@ -1,0 +1,43 @@
+name: 'Build with Code Composer Studio™ integrated development environment (IDE)'
+description: 'Build projects using Code Composer Studio IDE Docker image'
+inputs:
+  project-name:
+    description: 'Name of the project to build'
+    required: true
+  build-config:
+    description: 'Build configuration (e.g., Debug or Release)'
+    required: false
+    default: 'Debug'
+  major-ver:
+    description: 'Major version of CCS'
+    required: false
+    default: '12'
+  minor-ver:
+    description: 'Minor version of CCS'
+    required: false
+    default: '7'
+  patch-ver:
+    description: 'Patch version of CCS'
+    required: false
+    default: '0'
+  build-ver:
+    description: 'Build version number'
+    required: false
+    default: '00007'
+  components:
+    description: 'Components to install (e.g., PF_C28)'
+    required: false
+    default: 'PF_C28'
+
+runs:
+  using: 'docker'
+  image: 'Dockerfile'
+  env:
+    MAJOR_VER: ${{ inputs.major-ver }}
+    MINOR_VER: ${{ inputs.minor-ver }}
+    PATCH_VER: ${{ inputs.patch-ver }}
+    BUILD_VER: ${{ inputs.build-ver }}
+    COMPONENTS: ${{ inputs.components }}
+  args:
+    - ${{ inputs.project-name }}
+    - ${{ inputs.build-config }}
