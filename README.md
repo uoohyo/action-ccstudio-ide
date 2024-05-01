@@ -1,5 +1,8 @@
 # action-ccstudio-ide
 
+![GitHub Release](https://img.shields.io/github/v/release/uoohyo/action-ccstudio-ide?include_prereleases&logo=github)
+![GitHub Tag](https://img.shields.io/github/v/tag/uoohyo/action-ccstudio-ide?include_prereleases)
+
 <img src="./.github/action-ccstudio-ide.jpg" width=256 height=256 />
 
 The [action-ccstudio-ide](https://github.com/uoohyo/action-ccstudio-ide) GitHub Action provides an automated environment for building projects within the [Code Composer Studio](https://www.ti.com/tool/CCSTUDIO) from [Texas Instruments Inc.](https://www.ti.com/) This action facilitates continuous integration and delivery (CI/CD) for embedded projects, leveraging the robust features of [Code Composer Studio](https://www.ti.com/tool/CCSTUDIO), which is an integrated development environment (IDE) designed specifically for TI's microcontrollers and processors.
