@@ -1,6 +1,9 @@
 name: 'Build with Code Composer Studio™ integrated development environment (IDE)'
 description: 'Build projects using Code Composer Studio IDE Docker image'
 inputs:
+  project-path:
+    description: 'Path to the project directory'
+    required: true
   project-name:
     description: 'Name of the project to build'
     required: true
@@ -39,5 +42,6 @@ runs:
     BUILD_VER: ${{ inputs.build-ver }}
     COMPONENTS: ${{ inputs.components }}
   args:
+    - ${{ inputs.project-path }}
     - ${{ inputs.project-name }}
     - ${{ inputs.build-config }}

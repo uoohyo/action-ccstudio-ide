@@ -22,8 +22,9 @@ name: Build Project with CCS IDE
             steps:
             - uses: actions/checkout@v3.1.0
             - name: Build with Code Composer Studio IDE
-            uses: uoohyo/action-ccstudio-ide@v1
+            uses: uoohyo/action-ccstudio-ide@v0.1.0
             with:
+                project-path: 'Project/YourProjectName'
                 project-name: 'YourProjectName'
                 build-config: 'Debug'
                 major-ver: '12'
@@ -31,6 +32,15 @@ name: Build Project with CCS IDE
                 patch-ver: '0'
                 build-ver: '00007'
                 components: 'PF_C28'
+
+
+### project-path (required)
+
+The project-path input specifies the relative path to the project within your repository that you want to build using the Code Composer Studio IDE. This path should lead directly to the project's root where the project files are located.
+
+    with:
+        project-path: 'path/to/your/project'
+
 
 ### project-name (required)
 
