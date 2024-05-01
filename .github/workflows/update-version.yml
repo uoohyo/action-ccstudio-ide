@@ -5,27 +5,26 @@ on:
       - main
 
 jobs:
-  build:
-    release:
-      runs-on: ubuntu-latest
+  release:
+    runs-on: ubuntu-latest
 
-      steps:
+    steps:
 
-        - name: Checkout
-          uses: actions/checkout@v4.1.4
+      - name: Checkout
+        uses: actions/checkout@v4.1.4
 
-        - name: Bump version and push tag
-          uses: anothrNick/github-tag-action@1.67.0
-          env:
-            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-            DEFAULT_BUMP: minor
-            WITH_V: true
-            RELEASE_BRANCHES: main
-          id: tag_version
+      - name: Bump version and push tag
+        uses: anothrNick/github-tag-action@1.67.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DEFAULT_BUMP: minor
+          WITH_V: true
+          RELEASE_BRANCHES: main
+        id: tag_version
 
-        - name: Create Release
-          uses: ncipollo/release-action@v1.14.0
-          with:
-            tag: ${{ steps.tag_version.outputs.new_tag }}
-            name: Release ${{ steps.tag_version.outputs.new_tag }}
-            body: ${{ steps.tag_version.outputs.changelog }}
+      - name: Create Release
+        uses: ncipollo/release-action@v1.14.0
+        with:
+          tag: ${{ steps.tag_version.outputs.new_tag }}
+          name: Release ${{ steps.tag_version.outputs.new_tag }}
+          body: ${{ steps.tag_version.outputs.changelog }}
