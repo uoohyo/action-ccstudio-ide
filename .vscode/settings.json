@@ -1,0 +1,53 @@
+{
+    // 확장자에 따른 프로그래밍 언어 매칭
+    "files.associations": {
+        "Dockerfile*": "dockerfile",
+        "*.sh": "shellscript"
+    },
+
+    // Prettier 확장 설정
+    "prettier.printWidth": 120,
+    "prettier.tabWidth": 4,
+    "prettier.useTabs": false,
+    "prettier.semi": true,
+    "prettier.singleQuote": true,
+    "prettier.trailingComma": "all",
+    "prettier.bracketSpacing": true,
+    "prettier.arrowParens": "avoid",
+    "prettier.endOfLine": "auto",
+
+    // 포멧터 설정
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.formatOnSave": true,
+    "editor.formatOnPaste": true,
+    "editor.tabSize": 4,
+    "editor.insertSpaces": true,
+    "[json]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode"
+    },
+    "[jsonc]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode"
+    },
+    "[jsonl]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode"
+    },
+    "[markdown]": {
+        "editor.defaultFormatter": "yzhang.markdown-all-in-one"
+    },
+    "[shellscript]": {
+        "editor.defaultFormatter": "foxundermoon.shell-format"
+    },
+
+    // ShellCheck 설정
+    "shellcheck.enable": true,
+    "shellcheck.run": "onSave",
+
+    // shell-format 설정
+    "shellformat.flag": "-i 4",
+
+    // Docker 설정
+    "docker.defaultRegistryPath": "uoohyo",
+
+    // Markdown 파일 설정
+    "markdown.validate.enabled": true
+}

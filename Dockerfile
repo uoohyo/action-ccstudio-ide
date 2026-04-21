@@ -1,11 +1,6 @@
 # Base Image
 FROM uoohyo/ccstudio-ide:latest
 
-# File Copy
-COPY entrypoint.sh /entrypoint.sh
-
-# Set execute permission for the entrypoint script
-RUN chmod +x /entrypoint.sh
-
-# Entry Point
+# Entrypoint
+COPY --chmod=755 entrypoint.sh /entrypoint.sh
 ENTRYPOINT ["/entrypoint.sh"]
