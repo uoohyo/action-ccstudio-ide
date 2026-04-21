@@ -58,7 +58,7 @@ if [ "${MAJOR_VER}" -ge 20 ]; then
     chmod +x "ccs_setup_${VER}.run"
     "./ccs_setup_${VER}.run" --mode unattended --enable-components "${COMPONENTS}" --prefix /opt/ti
 else
-    wget --timeout=300 --tries=3 "${CCS_URL}${VER}/CCS${VER}_linux-x64.tar.gz"
+    wget --timeout=300 --tries=3 "${CCS_URL}${MAJOR_VER}.${MINOR_VER}.${PATCH_VER}/CCS${VER}_linux-x64.tar.gz"
     echo ">>> Extracting..."
     tar -zxf "CCS${VER}_linux-x64.tar.gz"
     chmod -R 755 "CCS${VER}_linux-x64"
