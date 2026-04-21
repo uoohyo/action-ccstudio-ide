@@ -1,0 +1,87 @@
+{
+    "recommendations": [
+        // * 깃 관련 기본 익스텐션
+
+        // 깃 히스토리. 깃 커밋의 히스토리(+깃 로그)를 보여주는 플러그인. 깃렌즈의 파일히스토리 기능과 비슷하지만,
+        // 파일 히스토리는 파일 단위로 보여주는 반면, 깃 히스토리는 커밋 단위로 보여줌. 둘 다 사용하면 좋음
+        "donjayamanne.githistory",
+        // 깃 그래프. 깃 커밋 그래프를 보여주는 플러그인. 브랜치가 많고 머지, 체크아웃 등의 변화가 많은 프로젝트의 경우 매우 유용함.
+        "mhutchie.git-graph",
+        // 깃 블레임. 깃 커밋을 마우스오버하면 해당 커밋의 작성자, 커밋 메시지 등을 보여주는 플러그인.
+        "waderyan.gitblame",
+        // 깃 허브 액션즈. 깃허브 액션즈 워크플로우 파일을 작성할 때 자동완성, 문법 검사, 스니펫 등을 제공하는 플러그인
+        "github.vscode-github-actions",
+
+        // * 커밋 컨벤션 관련 익스텐션
+
+        // 컨벤셔널 커밋 익스텐션. 사용 시 소스컨트롤 탭에 아이콘이 생기는데, feat(android): ~ 이런 식으로 커밋 메시지를 작성할 수 있게 해줌
+        // 커밋 메시지를 작성할 때 통일성을 유지할 수 있어서 CHANGELOG.md 파일을 자동으로 생성해주는 플러그인들과도 잘 어울림
+        "vivaxy.vscode-conventional-commits",
+        // 커밋린트. 프로젝트 메인 컨트리뷰터 등이 정하는 커밋 양식에 따라 커밋 메세지의 한줄 당 문자열 길이 제한, 첫 글자 대문자 금지 등
+        // 챙기기 귀찮은 컨벤션을 체크해주는 플러그인. 특별히 설정하지 않으면 프로젝트 내에 commitlint.config.js 파일이 있을 때만 작동함
+        "joshbolduc.commitlint",
+        // 깃 이모지, 커밋 메시지에 이모지 추가해주는 플러그인. 커밋 메시지에 이모지 추가하면 커밋 메시지가 더 읽기 쉽게 됨
+        "seatonjiang.gitmoji-vscode",
+        // 커밋 메시지를 GUI로 편하게 작성할 수 있게 해주는 편집기. 커밋 템플릿을 미리 정의해두고 재사용할 때 유용함
+        "adam-bender.commit-message-editor",
+
+        // * 테마/아이콘 관련 익스텐션
+
+        // VSCode Icons. VSCode 아이콘 개발팀에서 만든 공식 아이콘팩
+        "vscode-icons-team.vscode-icons",
+        // JetBrains 아이콘 테마. JetBrains 제품 아이콘으로 VSCode 아이콘을 교체해주는 플러그인
+        "ardonplay.jetbrains-idea-product-icon-theme",
+
+        // * 코드 내 주석 관련 익스텐션
+
+        // Better Comments Enhanced. TODO, FIXME, NOTE 등의 주석을 더 다양하게 색상/스타일로 구분해주는 확장
+        "aaron-bond.better-comments",
+
+        // * 휴먼 실수 방지 익스텐션 (린터/포맷터/오탈자 체크 등)
+
+        // 마크다운 올인원. 마크다운을 작성할 때 편리한 기능(HTML 익스포트, 코드블럭/수학블럭 토글 기능 등)을 대부분 제공하는 플러그인
+        "yzhang.markdown-all-in-one",
+        // 마크다운 린트. 마크다운 문법을 검사해주는 플러그인. 헤딩 레벨이 잘못되었는지, 링크가 잘못되었는지 등을 검사해줌
+        "davidanson.vscode-markdownlint",
+
+        // * 편의성 익스텐션
+
+        // json 및 기타 언어에 대한 포멧팅 기능을 제공하는 플러그인
+        "esbenp.prettier-vscode",
+        // 텍스트 파워툴즈 (문자열에 관련된 거의 모든 기능을 제공하는 플러그인. 정렬, 카멜케이스, 스네이크케이스 변경 등)
+        "qcz.text-power-tools",
+        // 컬러인포. 컬러코드를 마우스오버하면 해당 컬러코드의 색상을 보여주는 플러그인
+        "bierner.color-info",
+        // 컬러하이라이트. HEX, RGB, RGBA, HSL, HSLA 등의 컬러코드를 자동으로 하이라이팅해주는 플러그인
+        "naumovs.color-highlight",
+        // 코드 블럭을 더 세밀하게 접었다 펼칠 수 있게 해주는 개선된 폴딩 플러그인
+        "mohammadbaqer.better-folding",
+        // VSCode 내에서 PowerShell 스크립트 실행과 디버깅을 지원하는 공식 PowerShell 확장
+        "ms-vscode.powershell",
+        // 마크다운 문서를 PDF로 내보낼 수 있게 해주는 확장. 사양서나 보고서 산출물을 만들 때 유용함
+        "yzane.markdown-pdf",
+        // VSCode 안에서 PDF 파일을 바로 열어보고 간단한 뷰어 기능을 제공하는 확장
+        "tomoki1207.pdf",
+        // Git/비Git 프로젝트를 즐겨찾기처럼 관리하고, 워크스페이스 간을 빠르게 전환할 수 있게 해주는 프로젝트 매니저 확장
+        "alefragnani.project-manager",
+        // 에디터 한국어 패치를 제공하는 확장
+        "MS-CEINTL.vscode-language-pack-ko",
+
+        // * Docker 개발 관련 익스텐션
+
+        // Docker 공식 확장. Dockerfile/docker-compose 문법 하이라이팅, 컨테이너/이미지 관리, 레지스트리 연동 등 Docker 작업에 필요한 기능을 통합 제공
+        "ms-azuretools.vscode-docker",
+
+        // * 셸 스크립트 개발 관련 익스텐션
+
+        // ShellCheck. bash/sh 스크립트의 문법 오류, 버그 패턴, 스타일 문제를 정적 분석으로 실시간 감지해주는 린터
+        "timonwong.shellcheck",
+        // shell-format. bash/sh/zsh 등 셸 스크립트를 자동으로 포맷팅해주는 확장. shfmt 기반으로 일관된 코드 스타일 유지
+        "foxundermoon.shell-format",
+
+        // * YAML 관련 익스텐션
+
+        // YAML. Red Hat 공식 YAML 확장. 문법 검사, 자동완성, 스키마 기반 검증을 제공하며 docker-compose.yml 작성 시 유용함
+        "redhat.vscode-yaml"
+    ]
+}
