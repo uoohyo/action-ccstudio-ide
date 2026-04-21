@@ -22,7 +22,13 @@ EOF
 # Variables
 CCS_URL="https://dr-download.ti.com/software-development/ide-configuration-compiler-or-debugger/MD-J1VdearkvK/"
 VER="${MAJOR_VER}.${MINOR_VER}.${PATCH_VER}.${BUILD_VER}"
-CCS_ECLIPSE_DIR="/opt/ti/ccs/eclipse"
+# v20+: installs to /opt/ti/ccs/eclipse; v12-: installs to /opt/ti/ccsv<MAJOR>/eclipse
+if [ "${MAJOR_VER}" -ge 20 ]; then
+    CCS_ECLIPSE_DIR="/opt/ti/ccs/eclipse"
+else
+    CCS_ECLIPSE_DIR="/opt/ti/ccsv${MAJOR_VER}/eclipse"
+fi
+export PATH="${CCS_ECLIPSE_DIR}:${PATH}"
 
 # Download and Install CCS
 # v20+: zip package, CCS_ prefix, URL path: MAJOR.MINOR.PATCH
