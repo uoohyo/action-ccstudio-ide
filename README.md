@@ -34,7 +34,7 @@ jobs:
         steps:
         - uses: actions/checkout@v4
         - name: Build with Code Composer Studio IDE
-          uses: uoohyo/action-ccstudio-ide@v0.1.0
+          uses: uoohyo/action-ccstudio-ide@v2.0.2
           with:
               project-path: 'Project/YourProjectName'
               project-name: 'YourProjectName'
