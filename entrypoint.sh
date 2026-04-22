@@ -65,7 +65,13 @@ if [ "${MAJOR_VER}" -ge 20 ]; then
     chmod +x "ccs_setup_${VER}.run"
     "./ccs_setup_${VER}.run" --mode unattended --enable-components "${COMPONENTS}" --prefix /opt/ti
 else
-    wget --timeout=300 --tries=3 "${CCS_URL}${MAJOR_VER}.${MINOR_VER}.${PATCH_VER}/CCS${VER}_linux-x64.tar.gz"
+    # v12: URL path is 3-part (MAJOR.MINOR.PATCH); v11 and below: 4-part (MAJOR.MINOR.PATCH.BUILD)
+    if [ "${MAJOR_VER}" -ge 12 ]; then
+        CCS_DL_PATH="${MAJOR_VER}.${MINOR_VER}.${PATCH_VER}"
+    else
+        CCS_DL_PATH="${VER}"
+    fi
+    wget --timeout=300 --tries=3 "${CCS_URL}${CCS_DL_PATH}/CCS${VER}_linux-x64.tar.gz"
     echo ">>> Extracting..."
     tar -zxf "CCS${VER}_linux-x64.tar.gz"
     chmod -R 755 "CCS${VER}_linux-x64"
