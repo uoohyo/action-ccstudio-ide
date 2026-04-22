@@ -17,6 +17,20 @@ Each run of this action downloads and installs Code Composer Studio from scratch
 
 Supported CCS versions: **v7.x – v20.x**
 
+## Known Warnings
+
+### SLF4J
+
+The following lines may appear in the action log during project import or build:
+
+```text
+SLF4J: Failed to load class 'org.slf4j.impl.StaticLoggerBinder'.
+SLF4J: Defaulting to no-operation (NOP) logger implementation
+SLF4J: See http://www.slf4j.org/codes.html#StaticLoggerBinder for further details.
+```
+
+This is a harmless warning from Eclipse's internal logging framework. It does not affect the build result and can be safely ignored.
+
 ## Usage
 
 To use this action in your workflow, add the following steps to your `.github/workflows` YAML file:
@@ -126,6 +140,18 @@ When installing [Code Composer Studio](https://www.ti.com/tool/CCSTUDIO), you ca
 | PF_MMWAVE         | mmWave Sensors                                                               |
 | PF_C64MC          | C64x multicore DSP                                                           |
 | PF_DIGITAL_POWER  | UCD Digital Power Controllers                                                |
+
+### auto-import (optional)
+
+When set to `true`, uses the `-ccs.autoImport` flag to automatically discover and import **all** CCS projects found under `project-path`. This is useful when your project has shared dependency projects in the same workspace.
+
+```yaml
+with:
+    project-path: 'Workspace'   # root directory containing all projects
+    auto-import: 'true'
+```
+
+Default Value: `false` (imports only the single project at `project-path`).
 
 Multiple product families can be installed by separating their names with a comma in the `components` input:
 

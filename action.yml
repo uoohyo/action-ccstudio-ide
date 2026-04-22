@@ -31,6 +31,10 @@ inputs:
         description: 'Components to install (e.g., PF_C28)'
         required: false
         default: 'PF_C28'
+    auto-import:
+        description: 'Automatically import all projects found under project-path (useful for workspaces with shared dependencies)'
+        required: false
+        default: 'false'
 
 runs:
     using: 'docker'
@@ -45,3 +49,4 @@ runs:
         - ${{ inputs.project-path }}
         - ${{ inputs.project-name }}
         - ${{ inputs.build-config }}
+        - ${{ inputs.auto-import }}
