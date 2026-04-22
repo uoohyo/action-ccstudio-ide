@@ -22,8 +22,8 @@ EOF
 # Variables
 CCS_URL="https://dr-download.ti.com/software-development/ide-configuration-compiler-or-debugger/MD-J1VdearkvK/"
 VER="${MAJOR_VER}.${MINOR_VER}.${PATCH_VER}.${BUILD_VER}"
-# v20+: installs to /opt/ti/ccs/eclipse; v12-: installs to /opt/ti/ccsv<MAJOR>/eclipse
-if [ "${MAJOR_VER}" -ge 20 ]; then
+# v9+: installs to /opt/ti/ccs/eclipse; v8-: installs to /opt/ti/ccsv<MAJOR>/eclipse
+if [ "${MAJOR_VER}" -ge 9 ]; then
     CCS_ECLIPSE_DIR="/opt/ti/ccs/eclipse"
 else
     CCS_ECLIPSE_DIR="/opt/ti/ccsv${MAJOR_VER}/eclipse"
@@ -31,8 +31,10 @@ fi
 export PATH="${CCS_ECLIPSE_DIR}:${PATH}"
 
 # Download and Install CCS
-# v20+: zip package, CCS_ prefix, URL path: MAJOR.MINOR.PATCH
-# v12-: tar.gz package, CCS prefix, URL path: MAJOR.MINOR.PATCH.BUILD
+# v20+:  zip package, CCS_ prefix, URL path: MAJOR.MINOR.PATCH
+# v12-:  tar.gz package, CCS prefix, URL path: MAJOR.MINOR.PATCH (v12) or MAJOR.MINOR.PATCH.BUILD (v11-)
+# v10+:  installer binary is ccs_setup_<VER>.run, supports --enable-components (PF_* IDs)
+# v9-:   installer binary is ccs_setup_linux64_<VER>.bin, --enable-components not supported
 # v20+: udev stubs required — BlackHawk installer calls udev/kernel commands unavailable in Docker
 #       Ref: https://e2e.ti.com/support/tools/code-composer-studio-group/ccs/f/code-composer-studio-forum/1532443
 echo "=== CCS Installation ==="
@@ -41,8 +43,22 @@ echo "Components : ${COMPONENTS}"
 echo ""
 
 # Create temporary directory for installation
+INSTALL_LOG="/tmp/ccs_install.log"
 mkdir -p /ccs_install
 cd /ccs_install
+
+_show_install_logs() {
+    echo ""
+    echo "=== Installer Output ==="
+    cat "${INSTALL_LOG}" 2>/dev/null || echo "(no output captured)"
+    echo ""
+    echo "=== TI Installer Logs ==="
+    find /root/.ti /tmp /opt/ti -name "*.log" 2>/dev/null | while read -r f; do
+        echo "--- ${f} ---"
+        cat "${f}"
+    done
+    echo "========================"
+}
 
 # Download and Install CCS
 echo ">>> Downloading CCS ${VER}..."
@@ -62,24 +78,61 @@ if [ "${MAJOR_VER}" -ge 20 ]; then
     echo ">>> Installing CCS ${VER} (this may take a while)..."
     cd "CCS_${VER}_linux"
     chmod +x "ccs_setup_${VER}.run"
-    "./ccs_setup_${VER}.run" --mode unattended --enable-components "${COMPONENTS}" --prefix /opt/ti
+    "./ccs_setup_${VER}.run" --mode unattended --enable-components "${COMPONENTS}" --prefix /opt/ti 2>&1 | tee "${INSTALL_LOG}"
 else
-    wget --timeout=300 --tries=3 "${CCS_URL}${MAJOR_VER}.${MINOR_VER}.${PATCH_VER}/CCS${VER}_linux-x64.tar.gz"
+    # v12: URL path is 3-part (MAJOR.MINOR.PATCH); v11 and below: 4-part (MAJOR.MINOR.PATCH.BUILD)
+    if [ "${MAJOR_VER}" -ge 12 ]; then
+        CCS_DL_PATH="${MAJOR_VER}.${MINOR_VER}.${PATCH_VER}"
+    else
+        CCS_DL_PATH="${VER}"
+    fi
+    # Driver install scripts (bh_driver_install.sh for v7-v9, ti_permissions_install.sh for v10-v12)
+    # copy udev rules then try to restart the udev service, which doesn't exist in Docker:
+    #   v7-v9:   'service udev restart'  → "udev: unrecognized service"
+    #   v10-v12: 'systemctl restart udev' → "not booted with systemd"
+    # Either failure causes the BitRock/Run installer to roll back the full installation.
+    # Fix: create required dirs, stub udev init script, and redirect udev-related commands to /bin/true.
+    # /root/.ti is read by the installer's fs --clean step; missing it causes a boost::filesystem crash.
+    mkdir -p /etc/init.d /etc/udev/rules.d /root/.ti
+    printf '#!/bin/sh\nexit 0\n' > /etc/init.d/udev && chmod 755 /etc/init.d/udev
+    ln -sf /bin/true /usr/local/bin/udevadm
+    ln -sf /bin/true /usr/local/bin/systemctl
+    wget --timeout=300 --tries=3 "${CCS_URL}${CCS_DL_PATH}/CCS${VER}_linux-x64.tar.gz"
     echo ">>> Extracting..."
     tar -zxf "CCS${VER}_linux-x64.tar.gz"
     chmod -R 755 "CCS${VER}_linux-x64"
     echo ">>> Installing CCS ${VER} (this may take a while)..."
-    "./CCS${VER}_linux-x64/ccs_setup_${VER}.run" \
-        --mode unattended --enable-components "${COMPONENTS}" --prefix /opt/ti \
-        --install-BlackHawk false --install-Segger false
+    # v10+: new installer (.run, supports --enable-components with PF_* IDs)
+    # v9-:  old BitRock installer; binary name varies (linux64_*.bin or *.run), use find to detect
+    if [ "${MAJOR_VER}" -ge 10 ]; then
+        "./CCS${VER}_linux-x64/ccs_setup_${VER}.run" \
+            --mode unattended --enable-components "${COMPONENTS}" --prefix /opt/ti \
+            --install-BlackHawk false --install-Segger false 2>&1 | tee "${INSTALL_LOG}"
+    else
+        echo ">>> Note: --enable-components is not supported for CCS v9 and below. Installing all components."
+        INSTALLER_BIN=$(find "./CCS${VER}_linux-x64" -maxdepth 1 \( -name "*.bin" -o -name "*.run" \) | sort | head -1)
+        "${INSTALLER_BIN}" \
+            --mode unattended --prefix /opt/ti \
+            --install-BlackHawk false --install-Segger false 2>&1 | tee "${INSTALL_LOG}"
+    fi
 fi
 
 # Verify Installation
+# v20+: Theia-based, check ccs-server-cli.sh
+# v19-: Eclipse-based, binary is always named 'eclipse' (not 'eclipsec')
 echo ">>> Verifying CCS installation..."
 if [ "${MAJOR_VER}" -ge 20 ]; then
-    test -x "${CCS_ECLIPSE_DIR}/ccs-server-cli.sh" || { echo "[ERROR] CCS installation failed: ccs-server-cli.sh not found"; exit 1; }
+    if ! test -x "${CCS_ECLIPSE_DIR}/ccs-server-cli.sh"; then
+        echo "[ERROR] CCS installation failed: ccs-server-cli.sh not found"
+        _show_install_logs
+        exit 1
+    fi
 else
-    test -x "${CCS_ECLIPSE_DIR}/eclipsec" || { echo "[ERROR] CCS installation failed: eclipsec not found"; exit 1; }
+    if ! test -x "${CCS_ECLIPSE_DIR}/eclipse"; then
+        echo "[ERROR] CCS installation failed: eclipse not found"
+        _show_install_logs
+        exit 1
+    fi
 fi
 echo ">>> CCS ${VER} installation complete."
 
@@ -104,7 +157,7 @@ if [ "${MAJOR_VER}" -ge 20 ]; then
         -application com.ti.ccs.apps.importProject \
         -ccs.location "$1"
 else
-    "${CCS_ECLIPSE_DIR}/eclipsec" -noSplash -data /tmp/workspace \
+    "${CCS_ECLIPSE_DIR}/eclipse" -noSplash -data /tmp/workspace \
         -application com.ti.ccstudio.apps.projectImport \
         -ccs.location "$1"
 fi
@@ -120,13 +173,13 @@ if [ "${MAJOR_VER}" -ge 20 ]; then
         -ccs.configuration "$3" \
         -ccs.listErrors 2>&1 | tee "${BUILD_LOG}" || BUILD_FAILED=1
 elif [ "${MAJOR_VER}" -ge 11 ]; then
-    "${CCS_ECLIPSE_DIR}/eclipsec" -noSplash -data /tmp/workspace \
+    "${CCS_ECLIPSE_DIR}/eclipse" -noSplash -data /tmp/workspace \
         -application com.ti.ccstudio.apps.projectBuild \
         -ccs.projects "$2" \
         -ccs.configuration "$3" \
         -ccs.listErrors 2>&1 | tee "${BUILD_LOG}" || BUILD_FAILED=1
 else
-    "${CCS_ECLIPSE_DIR}/eclipsec" -noSplash -data /tmp/workspace \
+    "${CCS_ECLIPSE_DIR}/eclipse" -noSplash -data /tmp/workspace \
         -application com.ti.ccstudio.apps.projectBuild \
         -ccs.projects "$2" \
         -ccs.configuration "$3" \

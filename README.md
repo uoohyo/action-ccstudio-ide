@@ -15,6 +15,8 @@ Each run of this action downloads and installs Code Composer Studio from scratch
 
 > **Note:** This action runs inside a Docker container and requires a **Linux** runner (e.g. `ubuntu-22.04`).
 
+Supported CCS versions: **v7.x – v20.x**
+
 ## Usage
 
 To use this action in your workflow, add the following steps to your `.github/workflows` YAML file:
@@ -34,7 +36,7 @@ jobs:
         steps:
         - uses: actions/checkout@v4
         - name: Build with Code Composer Studio IDE
-          uses: uoohyo/action-ccstudio-ide@v0.1.0
+          uses: uoohyo/action-ccstudio-ide@v2
           with:
               project-path: 'Project/YourProjectName'
               project-name: 'YourProjectName'
@@ -96,6 +98,8 @@ with:
 ```
 
 ### components (optional)
+
+Component selection is supported on **CCS v10 and above**. For CCS v9 and below, the installer does not support component selection — all product families are installed regardless of the `components` value.
 
 When installing [Code Composer Studio](https://www.ti.com/tool/CCSTUDIO), you can choose from various [Texas Instruments Inc.](https://www.ti.com/) product families. Below is a list of installable product families:
 
