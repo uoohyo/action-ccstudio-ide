@@ -42,8 +42,22 @@ echo "Components : ${COMPONENTS}"
 echo ""
 
 # Create temporary directory for installation
+INSTALL_LOG="/tmp/ccs_install.log"
 mkdir -p /ccs_install
 cd /ccs_install
+
+_show_install_logs() {
+    echo ""
+    echo "=== Installer Output ==="
+    cat "${INSTALL_LOG}" 2>/dev/null || echo "(no output captured)"
+    echo ""
+    echo "=== TI Installer Logs ==="
+    find /root/.ti /tmp /opt/ti -name "*.log" 2>/dev/null | while read -r f; do
+        echo "--- ${f} ---"
+        cat "${f}"
+    done
+    echo "========================"
+}
 
 # Download and Install CCS
 echo ">>> Downloading CCS ${VER}..."
@@ -63,7 +77,7 @@ if [ "${MAJOR_VER}" -ge 20 ]; then
     echo ">>> Installing CCS ${VER} (this may take a while)..."
     cd "CCS_${VER}_linux"
     chmod +x "ccs_setup_${VER}.run"
-    "./ccs_setup_${VER}.run" --mode unattended --enable-components "${COMPONENTS}" --prefix /opt/ti
+    "./ccs_setup_${VER}.run" --mode unattended --enable-components "${COMPONENTS}" --prefix /opt/ti 2>&1 | tee "${INSTALL_LOG}"
 else
     # v12: URL path is 3-part (MAJOR.MINOR.PATCH); v11 and below: 4-part (MAJOR.MINOR.PATCH.BUILD)
     if [ "${MAJOR_VER}" -ge 12 ]; then
@@ -92,13 +106,13 @@ else
     if [ "${MAJOR_VER}" -ge 10 ]; then
         "./CCS${VER}_linux-x64/ccs_setup_${VER}.run" \
             --mode unattended --enable-components "${COMPONENTS}" --prefix /opt/ti \
-            --install-BlackHawk false --install-Segger false
+            --install-BlackHawk false --install-Segger false 2>&1 | tee "${INSTALL_LOG}"
     else
         echo ">>> Note: --enable-components is not supported for CCS v9 and below. Installing all components."
         INSTALLER_BIN=$(find "./CCS${VER}_linux-x64" -maxdepth 1 \( -name "*.bin" -o -name "*.run" \) | sort | head -1)
         "${INSTALLER_BIN}" \
             --mode unattended --prefix /opt/ti \
-            --install-BlackHawk false --install-Segger false
+            --install-BlackHawk false --install-Segger false 2>&1 | tee "${INSTALL_LOG}"
     fi
 fi
 
