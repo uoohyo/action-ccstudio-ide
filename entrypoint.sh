@@ -71,6 +71,17 @@ else
     else
         CCS_DL_PATH="${VER}"
     fi
+    # Driver install scripts (bh_driver_install.sh for v7-v9, ti_permissions_install.sh for v10-v12)
+    # copy udev rules then try to restart the udev service, which doesn't exist in Docker:
+    #   v7-v9:   'service udev restart'  → "udev: unrecognized service"
+    #   v10-v12: 'systemctl restart udev' → "not booted with systemd"
+    # Either failure causes the BitRock/Run installer to roll back the full installation.
+    # Fix: create required dirs, stub udev init script, and redirect udev-related commands to /bin/true.
+    # /root/.ti is read by the installer's fs --clean step; missing it causes a boost::filesystem crash.
+    mkdir -p /etc/init.d /etc/udev/rules.d /root/.ti
+    printf '#!/bin/sh\nexit 0\n' > /etc/init.d/udev && chmod 755 /etc/init.d/udev
+    ln -sf /bin/true /usr/local/bin/udevadm
+    ln -sf /bin/true /usr/local/bin/systemctl
     wget --timeout=300 --tries=3 "${CCS_URL}${CCS_DL_PATH}/CCS${VER}_linux-x64.tar.gz"
     echo ">>> Extracting..."
     tar -zxf "CCS${VER}_linux-x64.tar.gz"
