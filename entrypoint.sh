@@ -117,11 +117,21 @@ else
 fi
 
 # Verify Installation
+# v20+: Theia-based, check ccs-server-cli.sh
+# v19-: Eclipse-based, binary is always named 'eclipse' (not 'eclipsec')
 echo ">>> Verifying CCS installation..."
 if [ "${MAJOR_VER}" -ge 20 ]; then
-    test -x "${CCS_ECLIPSE_DIR}/ccs-server-cli.sh" || { echo "[ERROR] CCS installation failed: ccs-server-cli.sh not found"; exit 1; }
+    if ! test -x "${CCS_ECLIPSE_DIR}/ccs-server-cli.sh"; then
+        echo "[ERROR] CCS installation failed: ccs-server-cli.sh not found"
+        _show_install_logs
+        exit 1
+    fi
 else
-    test -x "${CCS_ECLIPSE_DIR}/eclipsec" || { echo "[ERROR] CCS installation failed: eclipsec not found"; exit 1; }
+    if ! test -x "${CCS_ECLIPSE_DIR}/eclipse"; then
+        echo "[ERROR] CCS installation failed: eclipse not found"
+        _show_install_logs
+        exit 1
+    fi
 fi
 echo ">>> CCS ${VER} installation complete."
 
