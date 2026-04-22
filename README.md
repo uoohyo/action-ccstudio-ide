@@ -17,6 +17,20 @@ Each run of this action downloads and installs Code Composer Studio from scratch
 
 Supported CCS versions: **v7.x – v20.x**
 
+## Known Warnings
+
+### SLF4J
+
+The following lines may appear in the action log during project import or build:
+
+```text
+SLF4J: Failed to load class 'org.slf4j.impl.StaticLoggerBinder'.
+SLF4J: Defaulting to no-operation (NOP) logger implementation
+SLF4J: See http://www.slf4j.org/codes.html#StaticLoggerBinder for further details.
+```
+
+This is a harmless warning from Eclipse's internal logging framework. It does not affect the build result and can be safely ignored.
+
 ## Usage
 
 To use this action in your workflow, add the following steps to your `.github/workflows` YAML file:
