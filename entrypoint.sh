@@ -28,6 +28,7 @@ if [ "${MAJOR_VER}" -ge 9 ]; then
 else
     CCS_ECLIPSE_DIR="/opt/ti/ccsv${MAJOR_VER}/eclipse"
 fi
+export PATH="${CCS_ECLIPSE_DIR}:${PATH}"
 
 # Download and Install CCS
 # v20+:  zip package, CCS_ prefix, URL path: MAJOR.MINOR.PATCH
