@@ -148,22 +148,30 @@ echo ""
 PROJECT_PATH="/github/workspace/$1"
 PROJECT_NAME="$2"
 BUILD_CONFIG="$3"
+AUTO_IMPORT="${4:-false}"
 
 echo "=== Project Build ==="
 echo "Project Path  : ${PROJECT_PATH}"
 echo "Project Name  : ${PROJECT_NAME}"
 echo "Configuration : ${BUILD_CONFIG}"
+echo "Auto Import   : ${AUTO_IMPORT}"
 echo ""
 
 echo ">>> Importing project..."
+if [ "${AUTO_IMPORT}" = "true" ]; then
+    IMPORT_FLAGS="-ccs.autoImport -ccs.location ${PROJECT_PATH}"
+else
+    IMPORT_FLAGS="-ccs.location ${PROJECT_PATH}"
+fi
+
 if [ "${MAJOR_VER}" -ge 20 ]; then
     "${CCS_ECLIPSE_DIR}/ccs-server-cli.sh" -noSplash -workspace /tmp/workspace \
         -application com.ti.ccs.apps.importProject \
-        -ccs.location "${PROJECT_PATH}"
+        ${IMPORT_FLAGS}
 else
     "${CCS_ECLIPSE_DIR}/eclipse" -noSplash -data /tmp/workspace \
         -application com.ti.ccstudio.apps.projectImport \
-        -ccs.location "${PROJECT_PATH}"
+        ${IMPORT_FLAGS}
 fi
 
 echo ">>> Building project..."

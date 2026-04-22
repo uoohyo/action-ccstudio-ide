@@ -141,6 +141,18 @@ When installing [Code Composer Studio](https://www.ti.com/tool/CCSTUDIO), you ca
 | PF_C64MC          | C64x multicore DSP                                                           |
 | PF_DIGITAL_POWER  | UCD Digital Power Controllers                                                |
 
+### auto-import (optional)
+
+When set to `true`, uses the `-ccs.autoImport` flag to automatically discover and import **all** CCS projects found under `project-path`. This is useful when your project has shared dependency projects in the same workspace.
+
+```yaml
+with:
+    project-path: 'Workspace'   # root directory containing all projects
+    auto-import: 'true'
+```
+
+Default Value: `false` (imports only the single project at `project-path`).
+
 Multiple product families can be installed by separating their names with a comma in the `components` input:
 
 ```yaml
