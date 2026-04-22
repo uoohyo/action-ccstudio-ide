@@ -156,7 +156,7 @@ if [ "${MAJOR_VER}" -ge 20 ]; then
         -application com.ti.ccs.apps.importProject \
         -ccs.location "$1"
 else
-    "${CCS_ECLIPSE_DIR}/eclipsec" -noSplash -data /tmp/workspace \
+    "${CCS_ECLIPSE_DIR}/eclipse" -noSplash -data /tmp/workspace \
         -application com.ti.ccstudio.apps.projectImport \
         -ccs.location "$1"
 fi
@@ -172,13 +172,13 @@ if [ "${MAJOR_VER}" -ge 20 ]; then
         -ccs.configuration "$3" \
         -ccs.listErrors 2>&1 | tee "${BUILD_LOG}" || BUILD_FAILED=1
 elif [ "${MAJOR_VER}" -ge 11 ]; then
-    "${CCS_ECLIPSE_DIR}/eclipsec" -noSplash -data /tmp/workspace \
+    "${CCS_ECLIPSE_DIR}/eclipse" -noSplash -data /tmp/workspace \
         -application com.ti.ccstudio.apps.projectBuild \
         -ccs.projects "$2" \
         -ccs.configuration "$3" \
         -ccs.listErrors 2>&1 | tee "${BUILD_LOG}" || BUILD_FAILED=1
 else
-    "${CCS_ECLIPSE_DIR}/eclipsec" -noSplash -data /tmp/workspace \
+    "${CCS_ECLIPSE_DIR}/eclipse" -noSplash -data /tmp/workspace \
         -application com.ti.ccstudio.apps.projectBuild \
         -ccs.projects "$2" \
         -ccs.configuration "$3" \
