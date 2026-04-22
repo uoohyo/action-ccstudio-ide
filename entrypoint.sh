@@ -22,11 +22,18 @@ EOF
 # Variables
 CCS_URL="https://dr-download.ti.com/software-development/ide-configuration-compiler-or-debugger/MD-J1VdearkvK/"
 VER="${MAJOR_VER}.${MINOR_VER}.${PATCH_VER}.${BUILD_VER}"
-CCS_ECLIPSE_DIR="/opt/ti/ccs/eclipse"
+# v9+: installs to /opt/ti/ccs/eclipse; v8-: installs to /opt/ti/ccsv<MAJOR>/eclipse
+if [ "${MAJOR_VER}" -ge 9 ]; then
+    CCS_ECLIPSE_DIR="/opt/ti/ccs/eclipse"
+else
+    CCS_ECLIPSE_DIR="/opt/ti/ccsv${MAJOR_VER}/eclipse"
+fi
 
 # Download and Install CCS
-# v20+: zip package, CCS_ prefix, URL path: MAJOR.MINOR.PATCH
-# v12-: tar.gz package, CCS prefix, URL path: MAJOR.MINOR.PATCH.BUILD
+# v20+:  zip package, CCS_ prefix, URL path: MAJOR.MINOR.PATCH
+# v12-:  tar.gz package, CCS prefix, URL path: MAJOR.MINOR.PATCH (v12) or MAJOR.MINOR.PATCH.BUILD (v11-)
+# v10+:  installer binary is ccs_setup_<VER>.run, supports --enable-components (PF_* IDs)
+# v9-:   installer binary is ccs_setup_linux64_<VER>.bin, --enable-components not supported
 # v20+: udev stubs required — BlackHawk installer calls udev/kernel commands unavailable in Docker
 #       Ref: https://e2e.ti.com/support/tools/code-composer-studio-group/ccs/f/code-composer-studio-forum/1532443
 echo "=== CCS Installation ==="
