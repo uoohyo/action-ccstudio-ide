@@ -87,9 +87,19 @@ else
     tar -zxf "CCS${VER}_linux-x64.tar.gz"
     chmod -R 755 "CCS${VER}_linux-x64"
     echo ">>> Installing CCS ${VER} (this may take a while)..."
-    "./CCS${VER}_linux-x64/ccs_setup_${VER}.run" \
-        --mode unattended --enable-components "${COMPONENTS}" --prefix /opt/ti \
-        --install-BlackHawk false --install-Segger false
+    # v10+: new installer (.run, supports --enable-components with PF_* IDs)
+    # v9-:  old BitRock installer; binary name varies (linux64_*.bin or *.run), use find to detect
+    if [ "${MAJOR_VER}" -ge 10 ]; then
+        "./CCS${VER}_linux-x64/ccs_setup_${VER}.run" \
+            --mode unattended --enable-components "${COMPONENTS}" --prefix /opt/ti \
+            --install-BlackHawk false --install-Segger false
+    else
+        echo ">>> Note: --enable-components is not supported for CCS v9 and below. Installing all components."
+        INSTALLER_BIN=$(find "./CCS${VER}_linux-x64" -maxdepth 1 \( -name "*.bin" -o -name "*.run" \) | sort | head -1)
+        "${INSTALLER_BIN}" \
+            --mode unattended --prefix /opt/ti \
+            --install-BlackHawk false --install-Segger false
+    fi
 fi
 
 # Verify Installation
