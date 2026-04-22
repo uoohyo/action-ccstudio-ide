@@ -145,21 +145,25 @@ echo ""
 echo "=== CCS ${VER} is ready. ==="
 echo ""
 
+PROJECT_PATH="/github/workspace/$1"
+PROJECT_NAME="$2"
+BUILD_CONFIG="$3"
+
 echo "=== Project Build ==="
-echo "Project Path  : $1"
-echo "Project Name  : $2"
-echo "Configuration : $3"
+echo "Project Path  : ${PROJECT_PATH}"
+echo "Project Name  : ${PROJECT_NAME}"
+echo "Configuration : ${BUILD_CONFIG}"
 echo ""
 
 echo ">>> Importing project..."
 if [ "${MAJOR_VER}" -ge 20 ]; then
     "${CCS_ECLIPSE_DIR}/ccs-server-cli.sh" -noSplash -workspace /tmp/workspace \
         -application com.ti.ccs.apps.importProject \
-        -ccs.location "$1"
+        -ccs.location "${PROJECT_PATH}"
 else
     "${CCS_ECLIPSE_DIR}/eclipse" -noSplash -data /tmp/workspace \
         -application com.ti.ccstudio.apps.projectImport \
-        -ccs.location "$1"
+        -ccs.location "${PROJECT_PATH}"
 fi
 
 echo ">>> Building project..."
@@ -169,20 +173,20 @@ BUILD_FAILED=0
 if [ "${MAJOR_VER}" -ge 20 ]; then
     "${CCS_ECLIPSE_DIR}/ccs-server-cli.sh" -noSplash -workspace /tmp/workspace \
         -application com.ti.ccs.apps.buildProject \
-        -ccs.projects "$2" \
-        -ccs.configuration "$3" \
+        -ccs.projects "${PROJECT_NAME}" \
+        -ccs.configuration "${BUILD_CONFIG}" \
         -ccs.listErrors 2>&1 | tee "${BUILD_LOG}" || BUILD_FAILED=1
 elif [ "${MAJOR_VER}" -ge 11 ]; then
     "${CCS_ECLIPSE_DIR}/eclipse" -noSplash -data /tmp/workspace \
         -application com.ti.ccstudio.apps.projectBuild \
-        -ccs.projects "$2" \
-        -ccs.configuration "$3" \
+        -ccs.projects "${PROJECT_NAME}" \
+        -ccs.configuration "${BUILD_CONFIG}" \
         -ccs.listErrors 2>&1 | tee "${BUILD_LOG}" || BUILD_FAILED=1
 else
     "${CCS_ECLIPSE_DIR}/eclipse" -noSplash -data /tmp/workspace \
         -application com.ti.ccstudio.apps.projectBuild \
-        -ccs.projects "$2" \
-        -ccs.configuration "$3" \
+        -ccs.projects "${PROJECT_NAME}" \
+        -ccs.configuration "${BUILD_CONFIG}" \
         2>&1 | tee "${BUILD_LOG}" || BUILD_FAILED=1
 fi
 
