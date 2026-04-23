@@ -1,7 +1,9 @@
 # action-ccstudio-ide
 
+[![Update Version](https://github.com/uoohyo/action-ccstudio-ide/actions/workflows/update-version.yml/badge.svg)](https://github.com/uoohyo/action-ccstudio-ide/actions/workflows/update-version.yml)
 ![GitHub Release](https://img.shields.io/github/v/release/uoohyo/action-ccstudio-ide?include_prereleases&logo=github)
 ![GitHub Tag](https://img.shields.io/github/v/tag/uoohyo/action-ccstudio-ide?include_prereleases)
+[![Docker Image](https://img.shields.io/docker/v/uoohyo/ccstudio-ide?label=docker-ccstudio-ide&logo=docker)](https://hub.docker.com/r/uoohyo/ccstudio-ide)
 
 <!-- markdownlint-disable MD033 -->
 <img src="./.github/action-ccstudio-ide.jpg" width=256 height=256 alt="action-ccstudio-ide" />
@@ -16,20 +18,6 @@ Each run of this action downloads and installs Code Composer Studio from scratch
 > **Note:** This action runs inside a Docker container and requires a **Linux** runner (e.g. `ubuntu-22.04`).
 
 Supported CCS versions: **v7.x – v20.x**
-
-## Known Warnings
-
-### SLF4J
-
-The following lines may appear in the action log during project import or build:
-
-```text
-SLF4J: Failed to load class 'org.slf4j.impl.StaticLoggerBinder'.
-SLF4J: Defaulting to no-operation (NOP) logger implementation
-SLF4J: See http://www.slf4j.org/codes.html#StaticLoggerBinder for further details.
-```
-
-This is a harmless warning from Eclipse's internal logging framework. It does not affect the build result and can be safely ignored.
 
 ## Usage
 
@@ -141,24 +129,39 @@ When installing [Code Composer Studio](https://www.ti.com/tool/CCSTUDIO), you ca
 | PF_C64MC          | C64x multicore DSP                                                           |
 | PF_DIGITAL_POWER  | UCD Digital Power Controllers                                                |
 
-### auto-import (optional)
-
-When set to `true`, uses the `-ccs.autoImport` flag to automatically discover and import **all** CCS projects found under `project-path`. This is useful when your project has shared dependency projects in the same workspace.
-
-```yaml
-with:
-    project-path: 'Workspace'   # root directory containing all projects
-    auto-import: 'true'
-```
-
-Default Value: `false` (imports only the single project at `project-path`).
-
 Multiple product families can be installed by separating their names with a comma in the `components` input:
 
 ```yaml
 with:
     components: 'PF_MSP430,PF_CC2X'
 ```
+
+### auto-import (optional)
+
+When set to `true`, uses the `-ccs.autoImport` flag to automatically discover and import **all** CCS projects found under `project-path`. This is useful when your project has shared dependency projects in the same workspace.
+
+```yaml
+with:
+    project-path: 'Workspace'
+    project-name: 'YourProjectName'
+    auto-import: 'true'
+```
+
+Default Value: `false` (imports only the single project at `project-path`).
+
+## Known Warnings
+
+### SLF4J
+
+The following lines may appear in the action log during project import or build:
+
+```text
+SLF4J: Failed to load class 'org.slf4j.impl.StaticLoggerBinder'.
+SLF4J: Defaulting to no-operation (NOP) logger implementation
+SLF4J: See http://www.slf4j.org/codes.html#StaticLoggerBinder for further details.
+```
+
+This is a harmless warning from Eclipse's internal logging framework. It does not affect the build result and can be safely ignored.
 
 ## License
 
