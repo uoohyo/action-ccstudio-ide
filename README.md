@@ -1,9 +1,10 @@
 # action-ccstudio-ide
 
-[![Update Version](https://github.com/uoohyo/action-ccstudio-ide/actions/workflows/update-version.yml/badge.svg)](https://github.com/uoohyo/action-ccstudio-ide/actions/workflows/update-version.yml)
-![GitHub Release](https://img.shields.io/github/v/release/uoohyo/action-ccstudio-ide?include_prereleases&logo=github)
-![GitHub Tag](https://img.shields.io/github/v/tag/uoohyo/action-ccstudio-ide?include_prereleases)
-[![Docker Image](https://img.shields.io/docker/v/uoohyo/ccstudio-ide?label=docker-ccstudio-ide&logo=docker)](https://hub.docker.com/r/uoohyo/ccstudio-ide)
+[![Sync CCS Versions](https://github.com/uoohyo/action-ccstudio-ide/actions/workflows/sync-versions.yml/badge.svg)](https://github.com/uoohyo/action-ccstudio-ide/actions/workflows/sync-versions.yml)
+[![GitHub Release](https://img.shields.io/github/v/release/uoohyo/action-ccstudio-ide?logo=github)](https://github.com/uoohyo/action-ccstudio-ide/releases)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![CCS Versions](https://img.shields.io/badge/CCS-v7.0--v20.5-red.svg?logo=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0iI2ZmZiIgZD0iTTEyIDJDNi40OCAyIDIgNi40OCAyIDEyczQuNDggMTAgMTAgMTAgMTAtNC40OCAxMC0xMFMxNy41MiAyIDEyIDJ6bTAgMThjLTQuNDEgMC04LTMuNTktOC04czMuNTktOCA4LTggOCAzLjU5IDggOC0zLjU5IDgtOCA4eiIvPjwvc3ZnPg==)](https://github.com/uoohyo/docker-ccstudio-ide/blob/main/docs/versions.md)
+[![Docker Image](https://img.shields.io/docker/v/uoohyo/ccstudio-ide?label=docker-ccstudio-ide&logo=docker&sort=semver)](https://hub.docker.com/r/uoohyo/ccstudio-ide)
 
 <!-- markdownlint-disable MD033 -->
 <img src="./.github/action-ccstudio-ide.jpg" width=256 height=256 alt="action-ccstudio-ide" />
