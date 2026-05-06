@@ -1,16 +1,12 @@
 name: Sync CCS Versions
 
 on:
+  push:
+    branches:
+      - main
   repository_dispatch:
     types: [new-ccs-version]
   workflow_dispatch:
-    inputs:
-      dry-run:
-        description: 'Dry run mode (do not create tags)'
-        required: false
-        default: 'false'
-  schedule:
-    - cron: '0 0 * * 0'  # Weekly on Sunday at 00:00 UTC
 
 jobs:
   sync-versions:
@@ -97,7 +93,7 @@ jobs:
           fi
 
       - name: Create tags and releases
-        if: steps.new-versions.outputs.count > 0 && github.event.inputs.dry-run != 'true'
+        if: steps.new-versions.outputs.count > 0
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -174,7 +170,7 @@ jobs:
           echo "Tag creation complete!"
 
       - name: Update version aliases
-        if: steps.new-versions.outputs.count > 0 && github.event.inputs.dry-run != 'true'
+        if: steps.new-versions.outputs.count > 0
         run: |
           echo "Updating version aliases (v20, v20.5, etc.)..."
 
@@ -223,16 +219,19 @@ jobs:
       - name: Summary
         if: always()
         run: |
-          echo "## Sync Summary" >> $GITHUB_STEP_SUMMARY
+          echo "## 🔄 Sync Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "- **Total CCS versions available**: ${{ steps.fetch-versions.outputs.count }}" >> $GITHUB_STEP_SUMMARY
           echo "- **New versions tagged**: ${{ steps.new-versions.outputs.count || 0 }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Dry run mode**: ${{ github.event.inputs.dry-run || 'false' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Trigger**: ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
 
           if [ "${{ steps.new-versions.outputs.count || 0 }}" -gt 0 ]; then
             echo "" >> $GITHUB_STEP_SUMMARY
-            echo "### New Versions" >> $GITHUB_STEP_SUMMARY
+            echo "### ✨ New Versions Created" >> $GITHUB_STEP_SUMMARY
             echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
             echo "${{ steps.new-versions.outputs.new }}" >> $GITHUB_STEP_SUMMARY
             echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "✅ All versions are up to date. No new tags created." >> $GITHUB_STEP_SUMMARY
           fi
