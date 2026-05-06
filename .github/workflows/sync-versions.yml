@@ -29,16 +29,17 @@ jobs:
           VERSIONS_URL="https://raw.githubusercontent.com/uoohyo/docker-ccstudio-ide/main/docs/versions.md"
           curl -fsSL "$VERSIONS_URL" -o /tmp/versions.md
 
-          # Extract supported versions (those with ✅)
-          # Format: | 20.5.1.00012 | `uoohyo/ccstudio-ide:20.5.1.00012` |
-          VERSIONS=$(grep -oP '^\| \K[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+(?= \|)' /tmp/versions.md || true)
+          # Extract supported versions (those with ✅ Available)
+          # Format: | `20.5.1.00012` | ✅ Available | ... |
+          # Sort in ascending order (oldest first, same as docker-ccstudio-ide build order)
+          VERSIONS=$(grep '✅ Available' /tmp/versions.md | sed -E 's/.*`([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+)`.*/\1/' | sort -V || true)
 
           if [ -z "$VERSIONS" ]; then
             echo "No versions found in versions.md"
             exit 1
           fi
 
-          echo "Found versions:"
+          echo "Found versions (sorted oldest → newest):"
           echo "$VERSIONS"
 
           # Save to output
