@@ -30,3 +30,7 @@ runs:
         - ${{ inputs.project-name }}
         - ${{ inputs.build-config }}
         - ${{ inputs.auto-import }}
+
+branding:
+    icon: 'box'
+    color: 'red'
