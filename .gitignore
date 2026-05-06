@@ -43,3 +43,8 @@ build-logs/
 # 에디터 관련
 .idea/
 *.iml
+.claude/
+
+# Node.js 종속성
+node_modules/
+package-lock.json
