@@ -11,22 +11,6 @@ inputs:
         description: 'Build configuration (e.g., Debug or Release)'
         required: false
         default: 'Debug'
-    major-ver:
-        description: 'Major version of CCS'
-        required: false
-        default: '20'
-    minor-ver:
-        description: 'Minor version of CCS'
-        required: false
-        default: '5'
-    patch-ver:
-        description: 'Patch version of CCS'
-        required: false
-        default: '0'
-    build-ver:
-        description: 'Build version number'
-        required: false
-        default: '00028'
     components:
         description: 'Components to install (e.g., PF_C28)'
         required: false
@@ -40,10 +24,6 @@ runs:
     using: 'docker'
     image: 'Dockerfile'
     env:
-        MAJOR_VER: ${{ inputs.major-ver }}
-        MINOR_VER: ${{ inputs.minor-ver }}
-        PATCH_VER: ${{ inputs.patch-ver }}
-        BUILD_VER: ${{ inputs.build-ver }}
         COMPONENTS: ${{ inputs.components }}
     args:
         - ${{ inputs.project-path }}

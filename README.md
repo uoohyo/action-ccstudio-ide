@@ -13,11 +13,11 @@ The [action-ccstudio-ide](https://github.com/uoohyo/action-ccstudio-ide) GitHub 
 
 ## Overview
 
-Each run of this action downloads and installs Code Composer Studio from scratch. Installation typically takes **15–30 minutes** depending on the selected components and runner performance.
+This action uses **pre-built Docker images** from [docker-ccstudio-ide](https://github.com/uoohyo/docker-ccstudio-ide) with Code Composer Studio already installed. Build time is typically **1–3 minutes** for pulling the image and building your project.
 
 > **Note:** This action runs inside a Docker container and requires a **Linux** runner (e.g. `ubuntu-22.04`).
 
-Supported CCS versions: **v7.x – v20.x**
+Supported CCS versions: **v7.0.0 – v20.5.1** (see [available versions](https://github.com/uoohyo/docker-ccstudio-ide/blob/main/docs/versions.md))
 
 ## Usage
 
@@ -38,17 +38,37 @@ jobs:
         steps:
         - uses: actions/checkout@v4
         - name: Build with Code Composer Studio IDE
-          uses: uoohyo/action-ccstudio-ide@v2
+          uses: uoohyo/action-ccstudio-ide@v20.5.0.00028
           with:
               project-path: 'Project/YourProjectName'
               project-name: 'YourProjectName'
               build-config: 'Debug'
-              major-ver: '20'
-              minor-ver: '5'
-              patch-ver: '0'
-              build-ver: '00028'
               components: 'PF_C28'
 ```
+
+## Selecting a CCS Version
+
+The CCS version is determined by the **action tag** you specify. Each tag corresponds to a specific CCS version from [docker-ccstudio-ide](https://github.com/uoohyo/docker-ccstudio-ide).
+
+### Version Tag Examples
+
+```yaml
+# Use a specific CCS version (recommended for reproducible builds)
+- uses: uoohyo/action-ccstudio-ide@v20.5.0.00028
+
+# Use the latest patch version within v20.5.0.x
+- uses: uoohyo/action-ccstudio-ide@v20.5.0
+
+# Use the latest minor version within v20.5.x
+- uses: uoohyo/action-ccstudio-ide@v20.5
+
+# Use the latest major version within v20.x
+- uses: uoohyo/action-ccstudio-ide@v20
+```
+
+### Available Versions
+
+See the full list of supported CCS versions in [docker-ccstudio-ide/docs/versions.md](https://github.com/uoohyo/docker-ccstudio-ide/blob/main/docs/versions.md) or check the [releases page](https://github.com/uoohyo/action-ccstudio-ide/releases).
 
 ## Inputs
 
@@ -80,24 +100,6 @@ with:
 ```
 
 Default Value: If not specified, the build configuration defaults to `Debug`.
-
-### version (optional)
-
-The structure of the [Code Composer Studio](https://www.ti.com/tool/CCSTUDIO) version is as follows:
-
-```text
-<major-ver> . <minor-ver> . <patch-ver> . <build-ver>
-```
-
-The default version is `20.5.0.00028`. For the latest version information, visit [this link](https://www.ti.com/tool/download/CCSTUDIO).
-
-```yaml
-with:
-    major-ver: '20'
-    minor-ver: '5'
-    patch-ver: '0'
-    build-ver: '00028'
-```
 
 ### components (optional)
 
