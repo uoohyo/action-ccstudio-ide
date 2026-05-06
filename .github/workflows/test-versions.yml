@@ -127,21 +127,21 @@ jobs:
       - name: Check for sample project
         id: check-sample
         run: |
-          if [ -d "test/sample-project" ]; then
+          if [ -d "test/sample-c2000" ]; then
             echo "found=true" >> $GITHUB_OUTPUT
-            echo "✓ Sample project found"
+            echo "✓ Sample C2000 project found"
           else
             echo "found=false" >> $GITHUB_OUTPUT
-            echo "⚠️  No sample project found at test/sample-project"
+            echo "⚠️  No sample project found at test/sample-c2000"
             echo "Skipping actual build test..."
           fi
 
-      - name: Build sample project with CCS ${{ matrix.version }}
+      - name: Build sample C2000 project with CCS ${{ matrix.version }}
         if: steps.check-sample.outputs.found == 'true'
         uses: ./
         with:
-          project-path: 'test/sample-project'
-          project-name: 'SampleProject'
+          project-path: 'test/sample-c2000'
+          project-name: 'sample-c2000'
           build-config: 'Debug'
           components: 'PF_C28'
 
@@ -149,10 +149,11 @@ jobs:
         if: steps.check-sample.outputs.found == 'true'
         run: |
           echo "Checking for build output..."
-          if [ -d "test/sample-project/Debug" ]; then
+          if [ -d "test/sample-c2000/Debug" ] && [ -f "test/sample-c2000/Debug/sample-c2000.out" ]; then
             echo "✓ Build artifacts found"
-            ls -lh test/sample-project/Debug/
+            ls -lh test/sample-c2000/Debug/
           else
             echo "✗ Build artifacts not found"
+            ls -la test/sample-c2000/ || true
             exit 1
           fi
