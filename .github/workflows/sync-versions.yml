@@ -1,0 +1,238 @@
+name: Sync CCS Versions
+
+on:
+  repository_dispatch:
+    types: [new-ccs-version]
+  workflow_dispatch:
+    inputs:
+      dry-run:
+        description: 'Dry run mode (do not create tags)'
+        required: false
+        default: 'false'
+  schedule:
+    - cron: '0 0 * * 0'  # Weekly on Sunday at 00:00 UTC
+
+jobs:
+  sync-versions:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch all history for tagging
+          ref: main  # Sync versions from main branch
+
+      - name: Fetch available CCS versions from docker-ccstudio-ide
+        id: fetch-versions
+        run: |
+          echo "Fetching versions from docker-ccstudio-ide repository..."
+
+          # Fetch versions.md from docker-ccstudio-ide
+          VERSIONS_URL="https://raw.githubusercontent.com/uoohyo/docker-ccstudio-ide/main/docs/versions.md"
+          curl -fsSL "$VERSIONS_URL" -o /tmp/versions.md
+
+          # Extract supported versions (those with ✅)
+          # Format: | 20.5.1.00012 | `uoohyo/ccstudio-ide:20.5.1.00012` |
+          VERSIONS=$(grep -oP '^\| \K[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+(?= \|)' /tmp/versions.md || true)
+
+          if [ -z "$VERSIONS" ]; then
+            echo "No versions found in versions.md"
+            exit 1
+          fi
+
+          echo "Found versions:"
+          echo "$VERSIONS"
+
+          # Save to output
+          echo "versions<<EOF" >> $GITHUB_OUTPUT
+          echo "$VERSIONS" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+          # Count versions
+          VERSION_COUNT=$(echo "$VERSIONS" | wc -l)
+          echo "count=$VERSION_COUNT" >> $GITHUB_OUTPUT
+
+      - name: Get existing tags
+        id: existing-tags
+        run: |
+          echo "Fetching existing tags..."
+          git fetch --tags
+          EXISTING_TAGS=$(git tag -l 'v*' | sed 's/^v//' || true)
+
+          echo "existing<<EOF" >> $GITHUB_OUTPUT
+          echo "$EXISTING_TAGS" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Determine new versions to tag
+        id: new-versions
+        run: |
+          VERSIONS="${{ steps.fetch-versions.outputs.versions }}"
+          EXISTING="${{ steps.existing-tags.outputs.existing }}"
+
+          # Find versions that don't have tags yet
+          NEW_VERSIONS=""
+          while IFS= read -r version; do
+            if ! echo "$EXISTING" | grep -q "^${version}$"; then
+              NEW_VERSIONS="${NEW_VERSIONS}${version}"$'\n'
+            fi
+          done <<< "$VERSIONS"
+
+          # Remove trailing newline
+          NEW_VERSIONS=$(echo "$NEW_VERSIONS" | sed '/^$/d')
+
+          if [ -z "$NEW_VERSIONS" ]; then
+            echo "No new versions to tag"
+            echo "count=0" >> $GITHUB_OUTPUT
+          else
+            echo "New versions to tag:"
+            echo "$NEW_VERSIONS"
+            echo "new<<EOF" >> $GITHUB_OUTPUT
+            echo "$NEW_VERSIONS" >> $GITHUB_OUTPUT
+            echo "EOF" >> $GITHUB_OUTPUT
+
+            COUNT=$(echo "$NEW_VERSIONS" | wc -l)
+            echo "count=$COUNT" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create tags and releases
+        if: steps.new-versions.outputs.count > 0 && github.event.inputs.dry-run != 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          NEW_VERSIONS="${{ steps.new-versions.outputs.new }}"
+
+          # Configure git
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          while IFS= read -r version; do
+            if [ -z "$version" ]; then
+              continue
+            fi
+
+            TAG="v${version}"
+            echo "Creating tag and release for $TAG..."
+
+            # Parse version components
+            MAJOR=$(echo "$version" | cut -d. -f1)
+            MINOR=$(echo "$version" | cut -d. -f2)
+            PATCH=$(echo "$version" | cut -d. -f3)
+            BUILD=$(echo "$version" | cut -d. -f4)
+
+            # Create annotated tag
+            git tag -a "$TAG" -m "CCS version ${version}" || {
+              echo "Failed to create tag $TAG (may already exist)"
+              continue
+            }
+
+            # Push the tag
+            git push origin "$TAG" || {
+              echo "Failed to push tag $TAG"
+              continue
+            }
+
+            # Create GitHub Release
+            gh release create "$TAG" \
+              --title "CCS ${version}" \
+              --notes "$(cat <<-EOF
+          ## Code Composer Studio v${version}
+
+          This release uses the pre-built Docker image with CCS **${version}** from [docker-ccstudio-ide](https://github.com/uoohyo/docker-ccstudio-ide).
+
+          ### Usage
+
+          \`\`\`yaml
+          - uses: uoohyo/action-ccstudio-ide@${TAG}
+            with:
+              project-path: 'path/to/project'
+              project-name: 'YourProject'
+              build-config: 'Debug'
+              components: 'PF_C28'
+          \`\`\`
+
+          ### What's Changed
+
+          - CCS Version: **${version}**
+          - Base Image: \`uoohyo/ccstudio-ide:${version}\`
+          - Docker Hub: https://hub.docker.com/r/uoohyo/ccstudio-ide/tags
+
+          ### Installation Time
+
+          ⚡ **No installation needed** - CCS is pre-installed in the Docker image, reducing build time from 15-30 minutes to 1-3 minutes!
+          EOF
+          )" || {
+              echo "Failed to create release for $TAG"
+              continue
+            }
+
+            echo "✅ Created tag and release: $TAG"
+
+          done <<< "$NEW_VERSIONS"
+
+          echo "Tag creation complete!"
+
+      - name: Update version aliases
+        if: steps.new-versions.outputs.count > 0 && github.event.inputs.dry-run != 'true'
+        run: |
+          echo "Updating version aliases (v20, v20.5, etc.)..."
+
+          # Get all version tags
+          ALL_VERSIONS=$(git tag -l 'v[0-9]*.[0-9]*.[0-9]*.[0-9]*' | sed 's/^v//' | sort -V)
+
+          # Track which aliases we've already updated
+          declare -A UPDATED_MAJOR
+          declare -A UPDATED_MINOR
+
+          # Process versions in reverse (newest first)
+          while IFS= read -r version; do
+            MAJOR=$(echo "$version" | cut -d. -f1)
+            MINOR=$(echo "$version" | cut -d. -f2)
+            PATCH=$(echo "$version" | cut -d. -f3)
+
+            MAJOR_TAG="v${MAJOR}"
+            MINOR_TAG="v${MAJOR}.${MINOR}"
+            PATCH_TAG="v${MAJOR}.${MINOR}.${PATCH}"
+
+            # Update major tag (e.g., v20) - only once for the latest version
+            if [ -z "${UPDATED_MAJOR[$MAJOR]}" ]; then
+              echo "Updating $MAJOR_TAG -> v${version}"
+              git tag -f -a "$MAJOR_TAG" -m "Latest CCS v${MAJOR}.x: ${version}"
+              git push -f origin "$MAJOR_TAG"
+              UPDATED_MAJOR[$MAJOR]=1
+            fi
+
+            # Update minor tag (e.g., v20.5) - only once for the latest patch
+            if [ -z "${UPDATED_MINOR[${MAJOR}.${MINOR}]}" ]; then
+              echo "Updating $MINOR_TAG -> v${version}"
+              git tag -f -a "$MINOR_TAG" -m "Latest CCS v${MAJOR}.${MINOR}.x: ${version}"
+              git push -f origin "$MINOR_TAG"
+              UPDATED_MINOR[${MAJOR}.${MINOR}]=1
+            fi
+
+            # Update patch tag (e.g., v20.5.1) - always update to latest build
+            echo "Updating $PATCH_TAG -> v${version}"
+            git tag -f -a "$PATCH_TAG" -m "Latest CCS v${MAJOR}.${MINOR}.${PATCH}.x: ${version}"
+            git push -f origin "$PATCH_TAG"
+
+          done <<< "$(echo "$ALL_VERSIONS" | tac)"  # Reverse to process newest first
+
+          echo "✅ Version aliases updated!"
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "## Sync Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Total CCS versions available**: ${{ steps.fetch-versions.outputs.count }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **New versions tagged**: ${{ steps.new-versions.outputs.count || 0 }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Dry run mode**: ${{ github.event.inputs.dry-run || 'false' }}" >> $GITHUB_STEP_SUMMARY
+
+          if [ "${{ steps.new-versions.outputs.count || 0 }}" -gt 0 ]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### New Versions" >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+            echo "${{ steps.new-versions.outputs.new }}" >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          fi
