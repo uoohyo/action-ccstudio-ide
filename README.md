@@ -7,7 +7,7 @@
 [![Docker Image](https://img.shields.io/docker/v/uoohyo/ccstudio-ide?label=docker-ccstudio-ide&logo=docker&sort=semver&style=flat-square)](https://hub.docker.com/r/uoohyo/ccstudio-ide)
 
 <!-- markdownlint-disable MD033 -->
-<img src="./.github/action-ccstudio-ide.jpg" width=256 height=256 alt="action-ccstudio-ide" />
+<img src="./.github/action-ccstudio-ide.png" width=256 height=256 alt="action-ccstudio-ide" />
 <!-- markdownlint-enable MD033 -->
 
 The [action-ccstudio-ide](https://github.com/uoohyo/action-ccstudio-ide) GitHub Action provides an automated environment for building projects within the [Code Composer Studio](https://www.ti.com/tool/CCSTUDIO) from [Texas Instruments Inc.](https://www.ti.com/) This action facilitates continuous integration and delivery (CI/CD) for embedded projects, leveraging the robust features of [Code Composer Studio](https://www.ti.com/tool/CCSTUDIO), which is an integrated development environment (IDE) designed specifically for TI's microcontrollers and processors.
