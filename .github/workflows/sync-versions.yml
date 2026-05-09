@@ -218,11 +218,16 @@ jobs:
           echo "✅ Version aliases updated!"
 
       - name: Update README badge
-        if: steps.new-versions.outputs.count > 0
+        if: steps.fetch-versions.outputs.count > 0
         run: |
-          # Get oldest and newest versions
+          # Get oldest and newest versions from all fetched versions
           OLDEST=$(echo "${{ steps.fetch-versions.outputs.versions }}" | head -1)
           NEWEST=$(echo "${{ steps.fetch-versions.outputs.versions }}" | tail -1)
+
+          if [ -z "$OLDEST" ] || [ -z "$NEWEST" ]; then
+            echo "⚠️ Could not determine version range, skipping README update"
+            exit 0
+          fi
 
           # Extract major.minor versions
           OLDEST_SHORT=$(echo "$OLDEST" | grep -oE '^[0-9]+\.[0-9]+')
