@@ -1,14 +1,13 @@
 # action-ccstudio-ide
+<!-- markdownlint-disable MD033 -->
+<img src="./.github/action-ccstudio-ide_banner.png" alt="action-ccstudio-ide_banner" />
+<!-- markdownlint-enable MD033 -->
 
 [![Sync CCS Versions](https://img.shields.io/github/actions/workflow/status/uoohyo/action-ccstudio-ide/sync-versions.yml?branch=main&label=sync&logo=github-actions&style=flat-square)](https://github.com/uoohyo/action-ccstudio-ide/actions/workflows/sync-versions.yml)
 [![GitHub Release](https://img.shields.io/github/v/release/uoohyo/action-ccstudio-ide?logo=github&style=flat-square)](https://github.com/uoohyo/action-ccstudio-ide/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow?style=flat-square)](LICENSE)
 [![CCS Versions](https://img.shields.io/badge/CCS-v7.0--v20.5-red?logo=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0iI2ZmZiIgZD0iTTEyIDJDNi40OCAyIDIgNi40OCAyIDEyczQuNDggMTAgMTAgMTAgMTAtNC40OCAxMC0xMFMxNy41MiAyIDEyIDJ6bTAgMThjLTQuNDEgMC04LTMuNTktOC04czMuNTktOCA4LTggOCAzLjU5IDggOC0zLjU5IDgtOCA4eiIvPjwvc3ZnPg==&style=flat-square)](https://github.com/uoohyo/docker-ccstudio-ide/blob/main/docs/versions.md)
 [![Docker Image](https://img.shields.io/docker/v/uoohyo/ccstudio-ide?label=docker-ccstudio-ide&logo=docker&sort=semver&style=flat-square)](https://hub.docker.com/r/uoohyo/ccstudio-ide)
-
-<!-- markdownlint-disable MD033 -->
-<img src="./.github/action-ccstudio-ide.png" width=256 height=256 alt="action-ccstudio-ide" />
-<!-- markdownlint-enable MD033 -->
 
 The [action-ccstudio-ide](https://github.com/uoohyo/action-ccstudio-ide) GitHub Action provides an automated environment for building projects within the [Code Composer Studio](https://www.ti.com/tool/CCSTUDIO) from [Texas Instruments Inc.](https://www.ti.com/) This action facilitates continuous integration and delivery (CI/CD) for embedded projects, leveraging the robust features of [Code Composer Studio](https://www.ti.com/tool/CCSTUDIO), which is an integrated development environment (IDE) designed specifically for TI's microcontrollers and processors.
 
