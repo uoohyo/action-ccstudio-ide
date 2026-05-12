@@ -14,7 +14,7 @@ The [action-ccstudio-ide](https://github.com/uoohyo/action-ccstudio-ide) GitHub 
 
 ## Overview
 
-This action uses **pre-built Docker images** from [docker-ccstudio-ide](https://github.com/uoohyo/docker-ccstudio-ide) with Code Composer Studio already installed. Build time is typically **1–3 minutes** for pulling the image and building your project.
+This action uses Docker images from [docker-ccstudio-ide](https://github.com/uoohyo/docker-ccstudio-ide) that contain the CCS installer pre-extracted. The action automatically installs CCS and builds your project. Typical workflow time: **4–7 minutes** (3–5 min installation + 1–2 min build).
 
 > **Note:** This action runs inside a Docker container and requires a **Linux** runner (e.g. `ubuntu-22.04`).
 
