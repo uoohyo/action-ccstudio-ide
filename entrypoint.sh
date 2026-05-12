@@ -51,148 +51,129 @@ else
     CCS_ECLIPSE_DIR="/opt/ti/ccsv${MAJOR_VER}/eclipse"
 fi
 
-# Check if CCS is already installed
-CCS_INSTALLED=false
+# Install CCS
+echo "=== CCS Installation ==="
+echo "Version    : ${VER}"
+echo "Components : ${COMPONENTS}"
+echo ""
+
+# Docker-specific stubs for installer compatibility
 if [ "${MAJOR_VER}" -ge 20 ]; then
-    # v20+: Check for ccs-server-cli.sh
-    if [ -x "${CCS_ECLIPSE_DIR}/ccs-server-cli.sh" ]; then
-        CCS_INSTALLED=true
-    fi
-else
-    # v7-19: Check for eclipse binary
-    if [ -x "${CCS_ECLIPSE_DIR}/eclipse" ]; then
-        CCS_INSTALLED=true
-    fi
+    # v20+: BlackHawk installer calls udev/kernel commands
+    ln -sf /bin/true /usr/local/bin/udevadm 2>/dev/null || true
+    ln -sf /bin/true /sbin/start_udev 2>/dev/null || true
+    ln -sf /bin/true /sbin/udevd 2>/dev/null || true
+    ln -sf /bin/true /sbin/modprobe 2>/dev/null || true
+    ln -sf /bin/true /sbin/insmod 2>/dev/null || true
+    ln -sf /bin/true /sbin/rmmod 2>/dev/null || true
+    mkdir -p /etc/udev/rules.d /run/udev /lib/modules 2>/dev/null || true
 fi
 
-# Install CCS if not already installed
-if [ "$CCS_INSTALLED" = false ]; then
-    echo "=== CCS Installation ==="
-    echo "Version    : ${VER}"
-    echo "Components : ${COMPONENTS}"
+# Start Xvfb for v7-v8 BitRock installers (GUI framework support)
+XVFB_PID=""
+if [ "${MAJOR_VER}" -le 8 ]; then
+    echo ">>> Starting virtual display for v${MAJOR_VER} BitRock installer..."
+    export DISPLAY=:99
+    export GDK_BACKEND=x11
+    export GTK_MODULES=""
+    export NO_AT_BRIDGE=1
+    export LIBGL_ALWAYS_INDIRECT=1
+    Xvfb :99 -ac -screen 0 1024x768x24 -nolisten tcp > /dev/null 2>&1 &
+    XVFB_PID=$!
+    sleep 2
+    echo ">>> Virtual display ready (DISPLAY=${DISPLAY}, PID=${XVFB_PID})"
+fi
+
+# Cleanup function for Xvfb
+cleanup_xvfb() {
+    if [ -n "$XVFB_PID" ]; then
+        echo ">>> Stopping virtual display..."
+        kill $XVFB_PID 2>/dev/null || true
+        wait $XVFB_PID 2>/dev/null || true
+    fi
+}
+trap cleanup_xvfb EXIT
+
+# Create temporary directory for installation
+INSTALL_LOG="/tmp/ccs_install.log"
+mkdir -p /ccs_install
+cd /ccs_install
+
+_show_install_logs() {
     echo ""
+    echo "=== Installer Output ==="
+    cat "${INSTALL_LOG}" 2>/dev/null || echo "(no output captured)"
+    echo ""
+    echo "=== TI Installer Logs ==="
+    find /root/.ti /tmp /opt/ti -name "*.log" 2>/dev/null | while read -r f; do
+        echo "--- ${f} ---"
+        cat "${f}"
+    done
+    echo "========================"
+}
 
-    # Docker-specific stubs for installer compatibility
-    if [ "${MAJOR_VER}" -ge 20 ]; then
-        # v20+: BlackHawk installer calls udev/kernel commands
-        ln -sf /bin/true /usr/local/bin/udevadm 2>/dev/null || true
-        ln -sf /bin/true /sbin/start_udev 2>/dev/null || true
-        ln -sf /bin/true /sbin/udevd 2>/dev/null || true
-        ln -sf /bin/true /sbin/modprobe 2>/dev/null || true
-        ln -sf /bin/true /sbin/insmod 2>/dev/null || true
-        ln -sf /bin/true /sbin/rmmod 2>/dev/null || true
-        mkdir -p /etc/udev/rules.d /run/udev /lib/modules 2>/dev/null || true
-    fi
+# Install CCS from pre-downloaded and extracted files
+echo ">>> Using pre-downloaded CCS ${VER} installer..."
+if [ "${MAJOR_VER}" -ge 20 ]; then
+    echo ">>> Installing CCS ${VER} (this may take a few minutes)..."
+    cd "/opt/ccs-installer/CCS_${VER}_linux"
+    chmod +x "ccs_setup_${VER}.run"
+    "./ccs_setup_${VER}.run" --mode unattended --enable-components "${COMPONENTS}" --prefix /opt/ti 2>&1 | tee "${INSTALL_LOG}"
+else
+    # Driver install scripts fix for v7-v19
+    mkdir -p /etc/init.d /etc/udev/rules.d /root/.ti
+    printf '#!/bin/sh\nexit 0\n' > /etc/init.d/udev && chmod 755 /etc/init.d/udev
+    ln -sf /bin/true /usr/local/bin/udevadm 2>/dev/null || true
+    ln -sf /bin/true /usr/local/bin/systemctl 2>/dev/null || true
 
-    # Start Xvfb for v7-v8 BitRock installers (GUI framework support)
-    XVFB_PID=""
-    if [ "${MAJOR_VER}" -le 8 ]; then
-        echo ">>> Starting virtual display for v${MAJOR_VER} BitRock installer..."
-        export DISPLAY=:99
-        export GDK_BACKEND=x11
-        export GTK_MODULES=""
-        export NO_AT_BRIDGE=1
-        export LIBGL_ALWAYS_INDIRECT=1
-        Xvfb :99 -ac -screen 0 1024x768x24 -nolisten tcp > /dev/null 2>&1 &
-        XVFB_PID=$!
-        sleep 2
-        echo ">>> Virtual display ready (DISPLAY=${DISPLAY}, PID=${XVFB_PID})"
-    fi
-
-    # Cleanup function for Xvfb
-    cleanup_xvfb() {
-        if [ -n "$XVFB_PID" ]; then
-            echo ">>> Stopping virtual display..."
-            kill $XVFB_PID 2>/dev/null || true
-            wait $XVFB_PID 2>/dev/null || true
-        fi
-    }
-    trap cleanup_xvfb EXIT
-
-    # Create temporary directory for installation
-    INSTALL_LOG="/tmp/ccs_install.log"
-    mkdir -p /ccs_install
-    cd /ccs_install
-
-    _show_install_logs() {
-        echo ""
-        echo "=== Installer Output ==="
-        cat "${INSTALL_LOG}" 2>/dev/null || echo "(no output captured)"
-        echo ""
-        echo "=== TI Installer Logs ==="
-        find /root/.ti /tmp /opt/ti -name "*.log" 2>/dev/null | while read -r f; do
-            echo "--- ${f} ---"
-            cat "${f}"
-        done
-        echo "========================"
-    }
-
-    # Install CCS from pre-downloaded and extracted files
-    echo ">>> Using pre-downloaded CCS ${VER} installer..."
-    if [ "${MAJOR_VER}" -ge 20 ]; then
-        echo ">>> Installing CCS ${VER} (this may take a few minutes)..."
-        cd "/opt/ccs-installer/CCS_${VER}_linux"
-        chmod +x "ccs_setup_${VER}.run"
-        "./ccs_setup_${VER}.run" --mode unattended --enable-components "${COMPONENTS}" --prefix /opt/ti 2>&1 | tee "${INSTALL_LOG}"
+    echo ">>> Installing CCS ${VER} (this may take a few minutes)..."
+    if [ "${MAJOR_VER}" -ge 10 ]; then
+        # v10+: new installer (.run, supports --enable-components)
+        "/opt/ccs-installer/CCS${VER}_linux-x64/ccs_setup_${VER}.run" \
+            --mode unattended --enable-components "${COMPONENTS}" --prefix /opt/ti \
+            --install-BlackHawk false --install-Segger false 2>&1 | tee "${INSTALL_LOG}"
     else
-        # Driver install scripts fix for v7-v19
-        mkdir -p /etc/init.d /etc/udev/rules.d /root/.ti
-        printf '#!/bin/sh\nexit 0\n' > /etc/init.d/udev && chmod 755 /etc/init.d/udev
-        ln -sf /bin/true /usr/local/bin/udevadm 2>/dev/null || true
-        ln -sf /bin/true /usr/local/bin/systemctl 2>/dev/null || true
-
-        echo ">>> Installing CCS ${VER} (this may take a few minutes)..."
-        if [ "${MAJOR_VER}" -ge 10 ]; then
-            # v10+: new installer (.run, supports --enable-components)
-            "/opt/ccs-installer/CCS${VER}_linux-x64/ccs_setup_${VER}.run" \
-                --mode unattended --enable-components "${COMPONENTS}" --prefix /opt/ti \
+        # v7-v9: old BitRock installer
+        echo ">>> Note: --enable-components is not supported for CCS v9 and below. Installing all components."
+        INSTALLER_BIN=$(find "/opt/ccs-installer/CCS${VER}_linux-x64" -maxdepth 1 \( -name "*.bin" -o -name "*.run" \) | sort | head -1)
+        if [ "${MAJOR_VER}" -le 8 ]; then
+            export JAVA_TOOL_OPTIONS=-Xss1280k
+            DISPLAY=:99 "${INSTALLER_BIN}" \
+                --mode unattended --prefix /opt/ti \
                 --install-BlackHawk false --install-Segger false 2>&1 | tee "${INSTALL_LOG}"
         else
-            # v7-v9: old BitRock installer
-            echo ">>> Note: --enable-components is not supported for CCS v9 and below. Installing all components."
-            INSTALLER_BIN=$(find "/opt/ccs-installer/CCS${VER}_linux-x64" -maxdepth 1 \( -name "*.bin" -o -name "*.run" \) | sort | head -1)
-            if [ "${MAJOR_VER}" -le 8 ]; then
-                export JAVA_TOOL_OPTIONS=-Xss1280k
-                DISPLAY=:99 "${INSTALLER_BIN}" \
-                    --mode unattended --prefix /opt/ti \
-                    --install-BlackHawk false --install-Segger false 2>&1 | tee "${INSTALL_LOG}"
-            else
-                "${INSTALLER_BIN}" \
-                    --mode unattended --prefix /opt/ti \
-                    --install-BlackHawk false --install-Segger false 2>&1 | tee "${INSTALL_LOG}"
-            fi
+            "${INSTALLER_BIN}" \
+                --mode unattended --prefix /opt/ti \
+                --install-BlackHawk false --install-Segger false 2>&1 | tee "${INSTALL_LOG}"
         fi
     fi
-
-    # Verify Installation
-    echo ">>> Verifying CCS installation..."
-    if [ "${MAJOR_VER}" -ge 20 ]; then
-        if ! test -x "${CCS_ECLIPSE_DIR}/ccs-server-cli.sh"; then
-            echo "[ERROR] CCS installation failed: ccs-server-cli.sh not found"
-            _show_install_logs
-            exit 1
-        fi
-    else
-        if ! test -x "${CCS_ECLIPSE_DIR}/eclipse"; then
-            echo "[ERROR] CCS installation failed: eclipse not found"
-            _show_install_logs
-            exit 1
-        fi
-    fi
-    echo ">>> CCS ${VER} installation complete."
-
-    # Cleanup
-    echo ">>> Cleaning up installer files..."
-    cd /home
-    rm -rf /opt/ccs-installer /ccs_install
-
-    echo ""
-    echo "=== CCS ${VER} is ready. ==="
-    echo ""
-else
-    echo "=== CCS ${VER} already installed ==="
-    echo ""
 fi
+
+# Verify Installation
+echo ">>> Verifying CCS installation..."
+if [ "${MAJOR_VER}" -ge 20 ]; then
+    if ! test -x "${CCS_ECLIPSE_DIR}/ccs-server-cli.sh"; then
+        echo "[ERROR] CCS installation failed: ccs-server-cli.sh not found"
+        _show_install_logs
+        exit 1
+    fi
+else
+    if ! test -x "${CCS_ECLIPSE_DIR}/eclipse"; then
+        echo "[ERROR] CCS installation failed: eclipse not found"
+        _show_install_logs
+        exit 1
+    fi
+fi
+echo ">>> CCS ${VER} installation complete."
+
+# Cleanup
+echo ">>> Cleaning up installer files..."
+cd /home
+rm -rf /opt/ccs-installer /ccs_install
+
+echo ""
+echo "=== CCS ${VER} is ready. ==="
+echo ""
 
 # Export CCS to PATH
 export PATH="${CCS_ECLIPSE_DIR}:${PATH}"
