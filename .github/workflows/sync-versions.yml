@@ -190,7 +190,7 @@ jobs:
           echo "Tag creation complete!"
 
       - name: Update version aliases
-        if: steps.new-versions.outputs.count > 0
+        if: steps.fetch-versions.outputs.count > 0
         run: |
           echo "Updating version aliases (v20, v20.5, etc.)..."
 
@@ -210,35 +210,44 @@ jobs:
             MAJOR_TAG="v${MAJOR}"
             MINOR_TAG="v${MAJOR}.${MINOR}"
             PATCH_TAG="v${MAJOR}.${MINOR}.${PATCH}"
+            FULL_TAG="v${version}"
+
+            # Get the commit that the full version tag points to
+            TARGET_COMMIT=$(git rev-parse "${FULL_TAG}^{commit}")
 
             # Update major tag (e.g., v20) - only once for the latest version
+            # Point to the same commit as the full version tag
             if [ -z "${UPDATED_MAJOR[$MAJOR]}" ]; then
-              echo "Updating $MAJOR_TAG -> v${version}"
-              git tag -f -a "$MAJOR_TAG" -m "Latest CCS v${MAJOR}.x: ${version}"
+              echo "Updating $MAJOR_TAG -> v${version} (commit: ${TARGET_COMMIT:0:7})"
+              git tag -f -a "$MAJOR_TAG" -m "Latest CCS v${MAJOR}.x: ${version}" "$TARGET_COMMIT"
               git push -f origin "$MAJOR_TAG"
               UPDATED_MAJOR[$MAJOR]=1
             fi
 
             # Update minor tag (e.g., v20.5) - only once for the latest patch
+            # Point to the same commit as the full version tag
             if [ -z "${UPDATED_MINOR[${MAJOR}.${MINOR}]}" ]; then
-              echo "Updating $MINOR_TAG -> v${version}"
-              git tag -f -a "$MINOR_TAG" -m "Latest CCS v${MAJOR}.${MINOR}.x: ${version}"
+              echo "Updating $MINOR_TAG -> v${version} (commit: ${TARGET_COMMIT:0:7})"
+              git tag -f -a "$MINOR_TAG" -m "Latest CCS v${MAJOR}.${MINOR}.x: ${version}" "$TARGET_COMMIT"
               git push -f origin "$MINOR_TAG"
               UPDATED_MINOR[${MAJOR}.${MINOR}]=1
             fi
 
             # Update patch tag (e.g., v20.5.1) - always update to latest build
-            echo "Updating $PATCH_TAG -> v${version}"
-            git tag -f -a "$PATCH_TAG" -m "Latest CCS v${MAJOR}.${MINOR}.${PATCH}.x: ${version}"
+            # Point to the same commit as the full version tag
+            echo "Updating $PATCH_TAG -> v${version} (commit: ${TARGET_COMMIT:0:7})"
+            git tag -f -a "$PATCH_TAG" -m "Latest CCS v${MAJOR}.${MINOR}.${PATCH}.x: ${version}" "$TARGET_COMMIT"
             git push -f origin "$PATCH_TAG"
 
           done <<< "$(echo "$ALL_VERSIONS" | tac)"  # Reverse to process newest first
 
-          # Update 'latest' tag to point to the newest version
+          # Update 'latest' tag to point to the newest version's commit
           LATEST_VERSION=$(echo "$ALL_VERSIONS" | tail -1)
           if [ -n "$LATEST_VERSION" ]; then
-            echo "Updating latest -> v${LATEST_VERSION}"
-            git tag -f -a "latest" -m "Latest CCS version: ${LATEST_VERSION}"
+            LATEST_TAG="v${LATEST_VERSION}"
+            LATEST_COMMIT=$(git rev-parse "${LATEST_TAG}^{commit}")
+            echo "Updating latest -> v${LATEST_VERSION} (commit: ${LATEST_COMMIT:0:7})"
+            git tag -f -a "latest" -m "Latest CCS version: ${LATEST_VERSION}" "$LATEST_COMMIT"
             git push -f origin "latest"
             echo "✅ 'latest' tag updated to v${LATEST_VERSION}"
           fi
