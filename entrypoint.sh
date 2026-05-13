@@ -177,6 +177,35 @@ else
 fi
 echo ">>> CCS ${VER} installation complete."
 
+# ============================================
+# Apply patches for CCS v20.0.x bugs (docker-ccstudio-ide#16)
+# ============================================
+if [ "${CCS_VERSION}" = "20.0.0.00012" ] || \
+   [ "${CCS_VERSION}" = "20.0.1.00004" ] || \
+   [ "${CCS_VERSION}" = "20.0.2.00005" ]; then
+    echo ">>> Applying CCS v20.0.x patches..."
+
+    # Backup original script
+    cp "${CCS_ECLIPSE_DIR}/ccs-server-cli.sh" \
+       "${CCS_ECLIPSE_DIR}/ccs-server-cli.sh.orig"
+
+    # Fix 1: POSIX shell syntax (== → =)
+    sed -i 's/ == / = /g' "${CCS_ECLIPSE_DIR}/ccs-server-cli.sh"
+
+    # Fix 2: Create symlink for plugins (fallback for PWD issues)
+    mkdir -p /home
+    ln -sf /opt/ti/ccs/eclipse/plugins /home/plugins
+
+    # Fix 3: Add Node.js to system PATH
+    NODE_PATH=$(find /opt/ti/ccs -name node -type f -executable 2>/dev/null | head -1)
+    if [ -n "$NODE_PATH" ]; then
+        ln -sf "$NODE_PATH" /usr/local/bin/node
+        echo "  Node.js: $($NODE_PATH --version) -> /usr/local/bin/node"
+    fi
+
+    echo ">>> CCS v20.0.x patches applied successfully"
+fi
+
 # Cleanup
 echo ">>> Cleaning up installer files..."
 cd /home
