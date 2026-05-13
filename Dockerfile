@@ -1,6 +1,6 @@
 # Argument for CCS version (defaults to latest)
 # This will be set automatically from the git tag during build
-ARG CCS_VERSION=latest
+ARG CCS_VERSION=12.0.0.00009
 
 # Base Image with CCS installer pre-extracted
 FROM uoohyo/ccstudio-ide:${CCS_VERSION}
