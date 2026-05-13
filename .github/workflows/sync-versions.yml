@@ -234,6 +234,15 @@ jobs:
 
           done <<< "$(echo "$ALL_VERSIONS" | tac)"  # Reverse to process newest first
 
+          # Update 'latest' tag to point to the newest version
+          LATEST_VERSION=$(echo "$ALL_VERSIONS" | tail -1)
+          if [ -n "$LATEST_VERSION" ]; then
+            echo "Updating latest -> v${LATEST_VERSION}"
+            git tag -f -a "latest" -m "Latest CCS version: ${LATEST_VERSION}"
+            git push -f origin "latest"
+            echo "✅ 'latest' tag updated to v${LATEST_VERSION}"
+          fi
+
           echo "✅ Version aliases updated!"
 
       - name: Update README badge
