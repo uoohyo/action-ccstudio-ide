@@ -21,20 +21,31 @@ EOF
 
 # Parse CCS version from environment variable
 # CCS_VERSION format: MAJOR.MINOR.PATCH.BUILD (e.g., 20.5.0.00028)
+# The version is set via ENV in Dockerfile (hardcoded per release tag)
 if [ -z "${CCS_VERSION}" ] || [ "${CCS_VERSION}" = "latest" ]; then
-    # Try to detect from pre-extracted installer directory
+    # Fallback: detect from pre-extracted installer directory in base image
     if [ -d "/opt/ccs-installer" ]; then
+        # Find the CCS installer directory (format: CCS_20.5.0.00028_linux or CCS20.5.0.00028_linux-x64)
         INSTALLER_DIR=$(find /opt/ccs-installer -maxdepth 1 -type d -name "CCS*" | head -1)
         if [ -n "$INSTALLER_DIR" ]; then
-            CCS_VERSION=$(basename "$INSTALLER_DIR" | sed 's/^CCS_\?//' | sed 's/_linux.*//')
+            # Extract version from directory name
+            # Examples: CCS_20.5.0.00028_linux → 20.5.0.00028
+            #           CCS20.5.0.00028_linux-x64 → 20.5.0.00028
+            CCS_VERSION=$(basename "$INSTALLER_DIR" | sed -E 's/^CCS_?([0-9.]+)_linux.*/\1/')
         fi
     fi
 
     # If still not found, fail
     if [ -z "${CCS_VERSION}" ] || [ "${CCS_VERSION}" = "latest" ]; then
-        echo "[ERROR] CCS_VERSION not set and could not be detected"
+        echo "[ERROR] CCS_VERSION not set and could not be detected from installer directory"
+        echo "[ERROR] Available directories in /opt/ccs-installer:"
+        ls -la /opt/ccs-installer/ 2>/dev/null || echo "(directory not found)"
         exit 1
     fi
+
+    echo ">>> Detected CCS version from installer directory: ${CCS_VERSION}"
+else
+    echo ">>> Using CCS version from environment: ${CCS_VERSION}"
 fi
 
 VER="${CCS_VERSION}"
