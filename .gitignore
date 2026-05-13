@@ -10,6 +10,10 @@ nul
 .metadata/
 .history/
 
+# CCS workspace metadata (created during builds)
+.theia/
+RemoteSystemsTempFiles/
+
 # macOS 관련 파일
 .DS_Store
 .DS_Store?

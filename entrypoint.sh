@@ -210,6 +210,11 @@ PROJECT_NAME="$2"
 BUILD_CONFIG="$3"
 AUTO_IMPORT="${4:-false}"
 
+# Define CCS workspace directory
+# Use /github/workspace for CCS metadata to ensure build outputs are accessible
+# Fixes issue #13: Build output files were inaccessible when using ${CCS_WORKSPACE}
+CCS_WORKSPACE="/github/workspace"
+
 echo "=== Project Build ==="
 echo "Project Path  : ${PROJECT_PATH}"
 echo "Project Name  : ${PROJECT_NAME}"
@@ -227,12 +232,12 @@ fi
 
 if [ -x "${CCS_ECLIPSE_DIR}/ccs-server-cli.sh" ]; then
     # v20+ (Theia-based)
-    "${CCS_ECLIPSE_DIR}/ccs-server-cli.sh" -noSplash -workspace /tmp/workspace \
+    "${CCS_ECLIPSE_DIR}/ccs-server-cli.sh" -noSplash -workspace ${CCS_WORKSPACE} \
         -application com.ti.ccs.apps.importProject \
         "${IMPORT_FLAGS[@]}"
 else
     # v7-19 (Eclipse-based)
-    "${CCS_ECLIPSE_DIR}/eclipse" -noSplash -data /tmp/workspace \
+    "${CCS_ECLIPSE_DIR}/eclipse" -noSplash -data ${CCS_WORKSPACE} \
         -application com.ti.ccstudio.apps.projectImport \
         "${IMPORT_FLAGS[@]}"
 fi
@@ -244,21 +249,21 @@ BUILD_FAILED=0
 
 if [ -x "${CCS_ECLIPSE_DIR}/ccs-server-cli.sh" ]; then
     # v20+ (Theia-based)
-    "${CCS_ECLIPSE_DIR}/ccs-server-cli.sh" -noSplash -workspace /tmp/workspace \
+    "${CCS_ECLIPSE_DIR}/ccs-server-cli.sh" -noSplash -workspace ${CCS_WORKSPACE} \
         -application com.ti.ccs.apps.buildProject \
         -ccs.projects "${PROJECT_NAME}" \
         -ccs.configuration "${BUILD_CONFIG}" \
         -ccs.listErrors 2>&1 | tee "${BUILD_LOG}" || BUILD_FAILED=1
 elif [ -d "/opt/ti/ccs/eclipse" ]; then
     # v11-19 (Eclipse-based, with -ccs.listErrors)
-    "${CCS_ECLIPSE_DIR}/eclipse" -noSplash -data /tmp/workspace \
+    "${CCS_ECLIPSE_DIR}/eclipse" -noSplash -data ${CCS_WORKSPACE} \
         -application com.ti.ccstudio.apps.projectBuild \
         -ccs.projects "${PROJECT_NAME}" \
         -ccs.configuration "${BUILD_CONFIG}" \
         -ccs.listErrors 2>&1 | tee "${BUILD_LOG}" || BUILD_FAILED=1
 else
     # v7-10 (Eclipse-based, without -ccs.listErrors)
-    "${CCS_ECLIPSE_DIR}/eclipse" -noSplash -data /tmp/workspace \
+    "${CCS_ECLIPSE_DIR}/eclipse" -noSplash -data ${CCS_WORKSPACE} \
         -application com.ti.ccstudio.apps.projectBuild \
         -ccs.projects "${PROJECT_NAME}" \
         -ccs.configuration "${BUILD_CONFIG}" \
