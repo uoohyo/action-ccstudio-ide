@@ -193,6 +193,29 @@ jobs:
 
           echo "Tag creation complete!"
 
+      - name: Repair missing releases for existing version tags
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          AVAILABLE_VERSIONS: ${{ steps.fetch-versions.outputs.versions }}
+        run: |
+          set -euo pipefail
+          while IFS= read -r version; do
+            [ -z "$version" ] && continue
+            # Versions come from the confirmed available-image documentation.
+            [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "::error::Invalid version: $version"; exit 1; }
+            TAG="v$version"
+            if ! git rev-parse --verify "refs/tags/$TAG" >/dev/null 2>&1; then
+              echo "::warning::Release tag $TAG does not exist; inspect version-tag creation."
+              continue
+            fi
+            if gh release view "$TAG" >/dev/null 2>&1; then
+              continue
+            fi
+            echo "Restoring GitHub Release for existing tag $TAG"
+            gh release create "$TAG" --verify-tag --title "CCS $version" \
+              --notes "CCS $version using Docker image uoohyo/ccstudio-ide:$version"
+          done <<< "$AVAILABLE_VERSIONS"
+
       - name: Update version aliases
         if: steps.new-versions.outputs.count > 0
         run: |
