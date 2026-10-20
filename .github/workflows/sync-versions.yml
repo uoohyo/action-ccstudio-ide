@@ -1,6 +1,10 @@
 name: Sync CCS Versions
 
 on:
+  # Periodic reconciliation: Docker documentation updates do not directly
+  # dispatch workflows in this repository.
+  schedule:
+    - cron: '17 4 * * 0'
   push:
     branches:
       - main
@@ -174,9 +178,9 @@ jobs:
           - Base Image: \`uoohyo/ccstudio-ide:${version}\`
           - Docker Hub: https://hub.docker.com/r/uoohyo/ccstudio-ide/tags
 
-          ### Installation Time
+          ### Installation
 
-          ⚡ **No installation needed** - CCS is pre-installed in the Docker image, reducing build time from 15-30 minutes to 1-3 minutes!
+          CCS is installed when the container starts from the pre-downloaded installer. The Docker image does not contain a pre-installed CCS runtime.
           EOF
           )" || {
               echo "Failed to create release for $TAG"
@@ -190,7 +194,7 @@ jobs:
           echo "Tag creation complete!"
 
       - name: Update version aliases
-        if: steps.fetch-versions.outputs.count > 0
+        if: steps.new-versions.outputs.count > 0
         run: |
           echo "Updating version aliases (v20, v20.5, etc.)..."
 
