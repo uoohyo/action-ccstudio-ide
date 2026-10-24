@@ -18,6 +18,8 @@ alone is not a substitute for a successful build.
   and Sunday 04:17 UTC. GitHub schedules can be delayed or disabled; a schedule is not a completion guarantee.
 - [action-ccstudio-ide-sample](https://github.com/uoohyo/action-ccstudio-ide-sample) has a separate maintenance schedule
   and manual trigger. Do not assume Action completion starts sample maintenance immediately.
+- Main-push reconciliation is existing-only: merging Action code cannot publish
+  a new toolchain tag. Scheduled/manual normal sync retains the existing available-version discovery behavior.
 - Without manual intervention, propagation can span separate weekly cycles. Record
   each stage as pending, failed, or verified rather than presenting a single green status.
 

@@ -183,6 +183,16 @@ else: sys.exit(2)
         self.assertEqual(self.refresh(backup_id='next-run').returncode, 0)
         self.assertEqual(refs, self.run_git('ls-remote', 'origin'))
 
+    def test_existing_only_merge_run_never_creates_new_available_version(self):
+        self.assertEqual(self.reconcile().returncode, 0)
+        self.versions.write_text(self.versions.read_text() + '| `1.3.0` | ![available](url) | |\n')
+        result = subprocess.run(['python3', str(SCRIPT), '--kind', 'stm32', '--versions-file', str(self.versions), '--existing-only'], cwd=self.repo, env=self.env, capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertNotIn('refs/tags/v1.3.0', self.run_git('ls-remote', '--tags', 'origin'))
+        self.assertEqual(json.loads(self.release_file.read_text()), ['v1.2.3'])
+        report = json.loads((self.repo / 'sync-results.json').read_text())
+        self.assertTrue(any(row['item'] == 'v1.3.0' and row['status'] == 'skipped' for row in report))
+
     def test_refresh_requires_explicit_deployed_selection_before_writes(self):
         self.assertEqual(self.reconcile().returncode, 0)
         self.change_action()

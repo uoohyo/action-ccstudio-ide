@@ -231,6 +231,7 @@ def main():
     parser.add_argument('--kind', choices=['ccs', 'stm32'], required=True)
     parser.add_argument('--versions-file', required=True)
     parser.add_argument('--report', default='sync-results.json')
+    parser.add_argument('--existing-only', action='store_true', help='Reconcile only already deployed full tags; never create a new toolchain version')
     parser.add_argument('--refresh-existing', action='store_true', help='Republish only explicitly selected existing full-version refs')
     parser.add_argument('--selected-versions', default='', help='Comma-separated deployed versions required for refresh')
     parser.add_argument('--backup-id', default='', help='Unique run ID for non-overwriting backup branches')
@@ -254,6 +255,12 @@ def main():
                 deployed = [version for version in versions if 'v' + version in existing_raw and 'v' + version in published]
                 sync.reconcile(deployed)
         else:
+            if args.existing_only:
+                deployed_refs, _ = remote_tags()
+                omitted = [version for version in versions if 'v' + version not in deployed_refs]
+                for version in omitted:
+                    sync.record('v' + version, 'tag', 'skipped', 'New toolchain publishing is disabled for this run')
+                versions = [version for version in versions if 'v' + version in deployed_refs]
             sync.reconcile(versions)
     except (RuntimeError, ValueError, OSError, json.JSONDecodeError) as error:
         sync.record('sync', 'preflight', 'failed', str(error))
