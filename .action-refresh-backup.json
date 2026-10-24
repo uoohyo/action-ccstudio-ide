@@ -1,0 +1,10 @@
+{
+  "tag": "v12.3.0.00005",
+  "old_oid": "4c1ca1651e4bed12e8471e9ef43284ec20ac5ca1",
+  "old_commit": "7106094c929ea6a6d707395c1e79b70d51ca8528",
+  "old_object_type": "tag",
+  "old_object_base64": "b2JqZWN0IDcxMDYwOTRjOTI5ZWE2YTZkNzA3Mzk1YzFlNzliNzBkNTFjYTg1MjgKdHlwZSBjb21taXQKdGFnIHYxMi4zLjAuMDAwMDUKdGFnZ2VyIGdpdGh1Yi1hY3Rpb25zW2JvdF0gPGdpdGh1Yi1hY3Rpb25zW2JvdF1AdXNlcnMubm9yZXBseS5naXRodWIuY29tPiAxNzc4Njg1Mzg3ICswMDAwCgpDQ1MgdmVyc2lvbiAxMi4zLjAuMDAwMDUK",
+  "new_commit": "c2ade42384ea8f552bb91c0802ae7dfe174e4a17",
+  "backup_ref": "refs/heads/backup/action-refresh/40130272045-1/v12.3.0.00005",
+  "status": "planned"
+}
