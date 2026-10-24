@@ -52,3 +52,8 @@ build-logs/
 # Node.js 종속성
 node_modules/
 package-lock.json
+
+# Local regression artifacts
+__pycache__/
+*.pyc
+sync-results.json
