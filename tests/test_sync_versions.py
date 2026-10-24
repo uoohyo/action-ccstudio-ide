@@ -147,6 +147,70 @@ else: sys.exit(2)
         self.assertEqual(self.run_git('rev-parse', 'v1.2.3'), full)
         self.assertEqual(self.run_git('show', 'v1.2.3:keep.txt'), 'preserved')
 
+    def refresh(self, selected='1.2.3', backup_id='test-run'):
+        return subprocess.run(['python3', str(SCRIPT), '--kind', 'stm32', '--versions-file', str(self.versions), '--refresh-existing', '--selected-versions', selected, '--backup-id', backup_id], cwd=self.repo, env=self.env, capture_output=True, text=True)
+
+    def change_action(self):
+        (self.repo / 'keep.txt').write_text('new implementation\n')
+        self.run_git('add', 'keep.txt')
+        self.run_git('commit', '-m', 'Runtime fix')
+
+    def test_explicit_refresh_backs_up_then_republishes_only_deployed_tag(self):
+        import base64
+        self.assertEqual(self.reconcile().returncode, 0)
+        old_oid = self.run_git('rev-parse', 'v1.2.3')
+        old_commit = self.run_git('rev-parse', 'v1.2.3^{commit}')
+        self.change_action()
+        # Available-but-not-deployed versions must not be created by refresh.
+        self.versions.write_text(self.versions.read_text() + '| `1.3.0` | ![available](url) | |\n')
+        result = self.refresh()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(self.run_git('show', 'v1.2.3:keep.txt'), 'new implementation')
+        self.assertIn('ARG CUBECLT_VERSION=1.2.3', self.run_git('show', 'v1.2.3:Dockerfile'))
+        ledger = json.loads((self.repo / 'refresh-ledger.json').read_text())
+        self.assertEqual(ledger[0]['old_oid'], old_oid)
+        self.assertEqual(ledger[0]['status'], 'verified')
+        self.assertEqual(self.run_git('ls-remote', 'origin', ledger[0]['backup_ref']).split()[0], ledger[0]['backup_commit'])
+        self.assertEqual(self.run_git('rev-parse', ledger[0]['backup_commit'] + '^'), old_commit)
+        durable = json.loads(self.run_git('show', ledger[0]['backup_commit'] + ':.action-refresh-backup.json'))
+        self.assertEqual(durable['old_oid'], old_oid)
+        self.assertEqual(durable['old_object_base64'], ledger[0]['old_object_base64'])
+        recreated = subprocess.check_output(['git', 'hash-object', '-t', 'tag', '--stdin'], input=base64.b64decode(ledger[0]['old_object_base64']), cwd=self.repo).decode().strip()
+        self.assertEqual(recreated, old_oid)
+        self.assertEqual(self.run_git('rev-parse', 'latest^{commit}'), self.run_git('rev-parse', 'v1.2.3^{commit}'))
+        self.assertNotIn('refs/tags/v1.3.0', self.run_git('ls-remote', '--tags', 'origin'))
+        refs = self.run_git('ls-remote', 'origin')
+        self.assertEqual(self.refresh(backup_id='next-run').returncode, 0)
+        self.assertEqual(refs, self.run_git('ls-remote', 'origin'))
+
+    def test_refresh_requires_explicit_deployed_selection_before_writes(self):
+        self.assertEqual(self.reconcile().returncode, 0)
+        self.change_action()
+        refs = self.run_git('ls-remote', 'origin')
+        for selected in ['', '1.3.0', '1.2.3;echo unsafe']:
+            self.assertEqual(self.refresh(selected=selected).returncode, 1)
+            self.assertEqual(refs, self.run_git('ls-remote', 'origin'))
+
+    def test_refresh_does_not_overwrite_an_existing_backup(self):
+        self.assertEqual(self.reconcile().returncode, 0)
+        self.change_action()
+        self.run_git('push', 'origin', 'HEAD:refs/heads/backup/action-refresh/test-run/v1.2.3')
+        old = self.run_git('ls-remote', '--tags', 'origin')
+        self.assertEqual(self.refresh().returncode, 1)
+        self.assertEqual(old, self.run_git('ls-remote', '--tags', 'origin'))
+
+    def test_refresh_tag_rejection_preserves_backup_and_failure_ledger(self):
+        self.assertEqual(self.reconcile().returncode, 0)
+        self.change_action()
+        old = self.run_git('ls-remote', '--tags', 'origin')
+        hook = self.remote / 'hooks/pre-receive'
+        hook.write_text('#!/bin/sh\nwhile read old new ref; do case "$ref" in refs/tags/*) exit 1 ;; esac; done\n')
+        hook.chmod(0o755)
+        self.assertEqual(self.refresh().returncode, 1)
+        self.assertEqual(old, self.run_git('ls-remote', '--tags', 'origin'))
+        ledger = json.loads((self.repo / 'refresh-ledger.json').read_text())
+        self.assertEqual(ledger[0]['status'], 'backed_up')
+
     def test_tag_push_failure_is_not_counted_as_success(self):
         hook = self.remote / 'hooks/pre-receive'
         hook.write_text('#!/bin/sh\nexit 1\n')

@@ -9,6 +9,15 @@ on:
   repository_dispatch:
     types: [new-ccs-version]
   workflow_dispatch:
+    inputs:
+      refresh_existing:
+        description: 'Republish explicitly selected deployed Action tags using this source revision'
+        type: boolean
+        default: false
+      versions:
+        description: 'Comma-separated deployed full toolchain versions (required for refresh)'
+        type: string
+        default: ''
 
 concurrency:
   group: sync-toolchain-versions
@@ -33,19 +42,28 @@ jobs:
       - name: Reconcile tags, releases, and aliases
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REFRESH_EXISTING: ${{ github.event_name == 'workflow_dispatch' && inputs.refresh_existing || false }}
+          SELECTED_VERSIONS: ${{ inputs.versions }}
+          BACKUP_ID: ${{ github.run_id }}-${{ github.run_attempt }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git fetch --tags origin
-          python3 .github/scripts/sync_versions.py --kind ccs --versions-file /tmp/versions.md
+          REFRESH_ARGS=()
+          if [ "$REFRESH_EXISTING" = "true" ]; then
+            REFRESH_ARGS+=(--refresh-existing --selected-versions "$SELECTED_VERSIONS" --backup-id "$BACKUP_ID")
+          fi
+          python3 .github/scripts/sync_versions.py --kind ccs --versions-file /tmp/versions.md "${REFRESH_ARGS[@]}"
       - name: Preserve reconciliation results
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: version-sync-results
-          path: sync-results.json
+          path: |
+            sync-results.json
+            refresh-ledger.json
           if-no-files-found: warn
-          retention-days: 14
+          retention-days: 90
 
       - name: Update README badge
         run: |

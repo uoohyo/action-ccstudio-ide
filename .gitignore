@@ -57,3 +57,4 @@ package-lock.json
 __pycache__/
 *.pyc
 sync-results.json
+refresh-ledger.json

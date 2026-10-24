@@ -42,8 +42,8 @@ must follow the repository owner's approval and least-privilege requirements.
 ## Retry and tag safety
 
 - Automatic reconciliation preserves existing full toolchain-version tags. It does
-  not repoint them to newer Action code. Publishing a new revision or deliberately
-  republishing selected existing refs requires a separate owner decision and tests.
+  not repoint them to newer Action code unless an operator explicitly enables the
+  existing-version refresh mode described below.
 - Missing Releases and aliases are repaired even with no new toolchain version.
 - Existing valid aliases are not rewritten. Alias updates use a remote ref lease;
   conflicting publishers cause a visible failure instead of silent overwriting.
@@ -61,3 +61,47 @@ bash -n entrypoint.sh
 
 These tests validate runtime argument/failure handling and sync control flow. They
 do not install vendor tools or prove production credentials and registry availability.
+
+## Republish selected existing Action versions
+
+This refresh updates Action code at existing toolchain tags while retaining each
+version's Docker image pin. It does not switch to pre-installed CCS images, change
+installer delivery, or build new Docker images.
+
+After the owner approves the exact deployed versions and the source revision has
+passed tests and been merged, manually run this sync workflow with:
+
+- `refresh_existing`: `true`
+- `versions`: an explicit comma-separated list of currently deployed toolchain versions
+
+An empty list is rejected; unavailable or unpublished versions are rejected before
+any remote write. Scheduled runs never enable this mode. Full refs whose desired
+tree is already current are left unchanged.
+
+For each changed full tag, the workflow first creates and verifies a unique
+`backup/action-refresh/<run-id>-<attempt>/<tag>` branch containing a recovery-metadata commit whose parent is the previous
+Action commit. The `.action-refresh-backup.json` file preserves the original tag
+object even if a canceled run never uploads artifacts. It also writes `refresh-ledger.json`, including the original raw tag OID,
+original object type and base64 object bytes, old commit, new commit, and backup ref.
+Only then does it update the full tag with an expected-old-OID lease. A conflicting
+publisher or backup collision fails rather than overwriting unexpected state.
+
+If any selected version fails, the workflow stops that refresh and does not update
+aliases. Previously refreshed versions may already be changed: inspect the ledger,
+do not assume atomicity. After all selected versions succeed, aliases are reconciled
+against the deployed, released version set. Newly available but unpublished versions
+are not created by refresh mode. Existing GitHub Release records remain in place.
+
+### Recovery evidence and rollback
+
+Download `version-sync-results` immediately after the run and retain its ledger.
+Artifacts expire after 90 days; backup branches are not automatically deleted. The
+ledger status distinguishes planned, backed-up, and verified changes. On ambiguous
+network failure, inspect the current remote OID before retrying or rolling back.
+
+Rollback is a deliberate owner-coordinated operation, not automatic: restore the
+original Git object from the ledger's base64 bytes with its recorded object type,
+verify that its hash equals `old_oid`, and restore the affected tag only with a lease
+against its current verified OID. Restore affected aliases consistently, then verify
+Docker pins and sample Debug/Release builds. The backup metadata and artifact ledger both preserve the original annotated
+tag object; retain one of these alongside the previous Action commit.

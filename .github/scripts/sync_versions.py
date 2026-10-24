@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 """Reconcile immutable toolchain tags, releases, and moving aliases.
 
-Only aliases may move. Every network mutation is recorded and failures fail the
+Only aliases may move automatically. Explicit refresh requires selected deployed
+versions and verified backup refs. Every network mutation is recorded; failures fail the
 run. This module is import-safe so selection and failure behavior can be tested
 without GitHub credentials or vendor tools.
 """
 import argparse
+import base64
 import json
 import os
 import re
@@ -86,6 +88,17 @@ def version_commit(version, variable):
     return command('git', 'commit-tree', tree, '-p', 'HEAD', '-m', f'Pin toolchain version {version}')
 
 
+def backup_commit(entry):
+    """Persist recovery metadata remotely while retaining the old commit as parent."""
+    payload = json.dumps(entry, indent=2) + '\n'
+    blob = command('git', 'hash-object', '-w', '--stdin', input=payload)
+    entries = [line for line in command('git', 'ls-tree', entry['old_commit']).splitlines()
+               if line.split('\t', 1)[1] != '.action-refresh-backup.json']
+    entries.append(f'100644 blob {blob}\t.action-refresh-backup.json')
+    tree = command('git', 'mktree', input='\n'.join(entries) + '\n')
+    return command('git', 'commit-tree', tree, '-p', entry['old_commit'], '-m', f"Recovery metadata for {entry['tag']}")
+
+
 class Reconciler:
     def __init__(self, kind):
         self.kind = kind
@@ -151,6 +164,54 @@ class Reconciler:
             except RuntimeError as error:
                 self.record(alias, 'alias', 'failed', str(error))
 
+    def refresh_existing(self, versions, backup_id, ledger_path):
+        """Explicit opt-in refresh of selected deployed refs with recovery evidence."""
+        if not re.fullmatch(r'[A-Za-z0-9_-]+', backup_id):
+            raise ValueError('Invalid backup ID')
+        raw, commits = remote_tags()
+        releases = release_tags()
+        missing = [version for version in versions if 'v' + version not in raw or 'v' + version not in releases]
+        if missing:
+            raise ValueError('Refresh requires existing published tags and Releases: ' + ', '.join(missing))
+        ledger = []
+        for version in versions:
+            tag = 'v' + version
+            try:
+                target = version_commit(version, self.variable)
+                if command('git', 'rev-parse', f'{target}^{{tree}}') == command('git', 'rev-parse', f'{commits[tag]}^{{tree}}'):
+                    self.record(tag, 'refresh', 'unchanged')
+                    continue
+                backup = f'refs/heads/backup/action-refresh/{backup_id}/{tag}'
+                entry = dict(tag=tag, old_oid=raw[tag], old_commit=commits[tag],
+                             old_object_type=command('git', 'cat-file', '-t', raw[tag]),
+                             old_object_base64=base64.b64encode(subprocess.check_output(['git', 'cat-file', '-p', raw[tag]])).decode(),
+                             new_commit=target, backup_ref=backup, status='planned')
+                recovery_commit = backup_commit(entry)
+                entry['backup_commit'] = recovery_commit
+                ledger.append(entry)
+                Path(ledger_path).write_text(json.dumps(ledger, indent=2) + '\n')
+                # An existing backup is never overwritten, even on a retry.
+                command('git', 'push', f'--force-with-lease={backup}:', 'origin', f'{recovery_commit}:{backup}')
+                backup_line = command('git', 'ls-remote', 'origin', backup)
+                if backup_line.split()[0] != recovery_commit:
+                    raise RuntimeError('Backup ref verification failed')
+                entry['status'] = 'backed_up'
+                Path(ledger_path).write_text(json.dumps(ledger, indent=2) + '\n')
+                command('git', 'tag', '-f', '-a', tag, target, '-m', f'{self.product} {version}; Action source {command("git", "rev-parse", "HEAD")}')
+                command('git', 'push', f'--force-with-lease=refs/tags/{tag}:{raw[tag]}', 'origin', f'refs/tags/{tag}:refs/tags/{tag}')
+                new_raw, new_commits = remote_tags()
+                if new_commits.get(tag) != target:
+                    raise RuntimeError('Refreshed tag verification failed')
+                entry['status'] = 'verified'
+                entry['new_oid'] = new_raw[tag]
+                Path(ledger_path).write_text(json.dumps(ledger, indent=2) + '\n')
+                self.record(tag, 'refresh', 'updated')
+            except (RuntimeError, ValueError, IndexError) as error:
+                self.record(tag, 'refresh', 'failed', str(error))
+                # Retain all evidence and stop rather than widening partial changes.
+                Path(ledger_path).write_text(json.dumps(ledger, indent=2) + '\n')
+                return
+
     def write_report(self, path):
         Path(path).write_text(json.dumps(self.results, indent=2) + '\n')
         summary = os.environ.get('GITHUB_STEP_SUMMARY')
@@ -162,7 +223,7 @@ class Reconciler:
                 stream.write('| Item | Operation | Result |\n|---|---|---|\n')
                 for row in self.results:
                     stream.write(f"| {row['item']} | {row['operation']} | {row['status']} |\n")
-                stream.write('\nFull version tags are immutable. Results describe actual operations, not planned counts.\n')
+                stream.write('\nExisting full tags are preserved unless explicit refresh is requested. Refresh recovery data is recorded separately. Results describe actual operations, not planned counts.\n')
 
 
 def main():
@@ -170,11 +231,30 @@ def main():
     parser.add_argument('--kind', choices=['ccs', 'stm32'], required=True)
     parser.add_argument('--versions-file', required=True)
     parser.add_argument('--report', default='sync-results.json')
+    parser.add_argument('--refresh-existing', action='store_true', help='Republish only explicitly selected existing full-version refs')
+    parser.add_argument('--selected-versions', default='', help='Comma-separated deployed versions required for refresh')
+    parser.add_argument('--backup-id', default='', help='Unique run ID for non-overwriting backup branches')
+    parser.add_argument('--ledger', default='refresh-ledger.json')
     args = parser.parse_args()
     sync = Reconciler(args.kind)
     try:
         versions = available_versions(Path(args.versions_file).read_text(), sync.parts)
-        sync.reconcile(versions)
+        if args.refresh_existing:
+            selected = list(dict.fromkeys(value.strip() for value in args.selected_versions.split(',') if value.strip()))
+            if not selected or not args.backup_id:
+                raise ValueError('Refresh requires explicit selected versions and a backup ID')
+            unknown = set(selected) - set(versions)
+            if unknown:
+                raise ValueError('Refresh cannot publish unavailable versions: ' + ', '.join(sorted(unknown)))
+            sync.refresh_existing(selected, args.backup_id, args.ledger)
+            if not any(row['status'] == 'failed' for row in sync.results):
+                # Reconcile aliases only after all selected existing refs succeeded.
+                existing_raw, _ = remote_tags()
+                published = release_tags()
+                deployed = [version for version in versions if 'v' + version in existing_raw and 'v' + version in published]
+                sync.reconcile(deployed)
+        else:
+            sync.reconcile(versions)
     except (RuntimeError, ValueError, OSError, json.JSONDecodeError) as error:
         sync.record('sync', 'preflight', 'failed', str(error))
     finally:
