@@ -1,0 +1,10 @@
+{
+  "tag": "v7.1.0.00016",
+  "old_oid": "942df058875534cbcbfbfd0d617cb2e42c8b3d8e",
+  "old_commit": "ea882313e669de6b289efd286e8df1c960355a9e",
+  "old_object_type": "tag",
+  "old_object_base64": "b2JqZWN0IGVhODgyMzEzZTY2OWRlNmIyODllZmQyODZlOGRmMWM5NjAzNTVhOWUKdHlwZSBjb21taXQKdGFnIHY3LjEuMC4wMDAxNgp0YWdnZXIgZ2l0aHViLWFjdGlvbnNbYm90XSA8Z2l0aHViLWFjdGlvbnNbYm90XUB1c2Vycy5ub3JlcGx5LmdpdGh1Yi5jb20+IDE3Nzg2ODUzMjcgKzAwMDAKCkNDUyB2ZXJzaW9uIDcuMS4wLjAwMDE2Cg==",
+  "new_commit": "741dad87676e768dd94a69b1566cd616573f2d47",
+  "backup_ref": "refs/heads/backup/action-refresh/40131679159-1/v7.1.0.00016",
+  "status": "planned"
+}
