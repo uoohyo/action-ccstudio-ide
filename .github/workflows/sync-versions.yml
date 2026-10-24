@@ -1,16 +1,27 @@
 name: Sync CCS Versions
 
 on:
-  # Periodic reconciliation: Docker documentation updates do not directly
-  # dispatch workflows in this repository.
+  # Docker documentation updates do not directly dispatch this workflow.
   schedule:
     - cron: '17 4 * * 0'
   push:
-    branches:
-      - main
+    branches: [main]
   repository_dispatch:
     types: [new-ccs-version]
   workflow_dispatch:
+    inputs:
+      refresh_existing:
+        description: 'Republish explicitly selected deployed Action tags using this source revision'
+        type: boolean
+        default: false
+      versions:
+        description: 'Comma-separated deployed full toolchain versions (required for refresh)'
+        type: string
+        default: ''
+
+concurrency:
+  group: sync-toolchain-versions
+  cancel-in-progress: false
 
 jobs:
   sync-versions:
@@ -21,276 +32,49 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Fetch all history for tagging
-          ref: main  # Sync versions from main branch
-
-      - name: Fetch available CCS versions from docker-ccstudio-ide
-        id: fetch-versions
+          fetch-depth: 0
+          ref: main
+      - name: Fetch confirmed available versions
         run: |
-          echo "Fetching versions from docker-ccstudio-ide repository..."
-
-          # Fetch versions.md from docker-ccstudio-ide
-          VERSIONS_URL="https://raw.githubusercontent.com/uoohyo/docker-ccstudio-ide/main/docs/versions.md"
-          curl -fsSL "$VERSIONS_URL" -o /tmp/versions.md
-
-          # Extract supported versions (those with available badge)
-          # Format: | `20.5.1.00012` | ![available](...) | ... |
-          # Sort in ascending order (oldest first, same as docker-ccstudio-ide build order)
-          VERSIONS=$(grep '!\[available\]' /tmp/versions.md | grep -oE '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' | awk '!seen[$0]++' | sort -V || true)
-
-          if [ -z "$VERSIONS" ]; then
-            echo "No versions found in versions.md"
-            exit 1
-          fi
-
-          echo "Found versions (sorted oldest → newest):"
-          echo "$VERSIONS"
-
-          # Save to output
-          echo "versions<<EOF" >> $GITHUB_OUTPUT
-          echo "$VERSIONS" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
-
-          # Count versions
-          VERSION_COUNT=$(echo "$VERSIONS" | wc -l)
-          echo "count=$VERSION_COUNT" >> $GITHUB_OUTPUT
-
-      - name: Get existing tags
-        id: existing-tags
-        run: |
-          echo "Fetching existing tags..."
-          git fetch --tags
-          EXISTING_TAGS=$(git tag -l 'v*' | sed 's/^v//' || true)
-
-          echo "existing<<EOF" >> $GITHUB_OUTPUT
-          echo "$EXISTING_TAGS" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
-
-      - name: Determine new versions to tag
-        id: new-versions
-        run: |
-          VERSIONS="${{ steps.fetch-versions.outputs.versions }}"
-          EXISTING="${{ steps.existing-tags.outputs.existing }}"
-
-          # Find versions that don't have tags yet
-          NEW_VERSIONS=""
-          while IFS= read -r version; do
-            if ! echo "$EXISTING" | grep -q "^${version}$"; then
-              NEW_VERSIONS="${NEW_VERSIONS}${version}"$'\n'
-            fi
-          done <<< "$VERSIONS"
-
-          # Remove trailing newline
-          NEW_VERSIONS=$(echo "$NEW_VERSIONS" | sed '/^$/d')
-
-          if [ -z "$NEW_VERSIONS" ]; then
-            echo "No new versions to tag"
-            echo "count=0" >> $GITHUB_OUTPUT
-          else
-            echo "New versions to tag:"
-            echo "$NEW_VERSIONS"
-            echo "new<<EOF" >> $GITHUB_OUTPUT
-            echo "$NEW_VERSIONS" >> $GITHUB_OUTPUT
-            echo "EOF" >> $GITHUB_OUTPUT
-
-            COUNT=$(echo "$NEW_VERSIONS" | wc -l)
-            echo "count=$COUNT" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Create tags and releases
-        if: steps.new-versions.outputs.count > 0
+          curl --fail --silent --show-error --location \
+            https://raw.githubusercontent.com/uoohyo/docker-ccstudio-ide/main/docs/versions.md \
+            --output /tmp/versions.md
+      - name: Reconcile tags, releases, and aliases
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REFRESH_EXISTING: ${{ github.event_name == 'workflow_dispatch' && inputs.refresh_existing || false }}
+          SELECTED_VERSIONS: ${{ inputs.versions }}
+          BACKUP_ID: ${{ github.run_id }}-${{ github.run_attempt }}
+          EXISTING_ONLY: ${{ github.event_name == 'push' }}
         run: |
-          NEW_VERSIONS="${{ steps.new-versions.outputs.new }}"
-
-          # Configure git
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-
-          while IFS= read -r version; do
-            if [ -z "$version" ]; then
-              continue
-            fi
-
-            TAG="v${version}"
-            echo "Creating tag and release for $TAG..."
-
-            # Parse version components
-            MAJOR=$(echo "$version" | cut -d. -f1)
-            MINOR=$(echo "$version" | cut -d. -f2)
-            PATCH=$(echo "$version" | cut -d. -f3)
-            BUILD=$(echo "$version" | cut -d. -f4)
-
-            # Create a temporary branch from main for this version
-            BRANCH="release/temp-${version}"
-            git checkout -b "$BRANCH" main
-
-            # Modify Dockerfile to hardcode this version
-            sed -i "s/ARG CCS_VERSION=latest/ARG CCS_VERSION=${version}/" Dockerfile
-
-            # Commit the version-specific Dockerfile
-            git add Dockerfile
-            git commit -m "Set CCS version to ${version} for release ${TAG}"
-
-            # Create annotated tag from this commit
-            git tag -a "$TAG" -m "CCS version ${version}" || {
-              echo "Failed to create tag $TAG"
-              git checkout main
-              git branch -D "$BRANCH"
-              continue
-            }
-
-            # Push the tag (not the branch)
-            git push origin "$TAG" || {
-              echo "Failed to push tag $TAG"
-              git checkout main
-              git branch -D "$BRANCH"
-              continue
-            }
-
-            # Return to main and clean up branch
-            git checkout main
-            git branch -D "$BRANCH"
-
-            # Create GitHub Release
-            gh release create "$TAG" \
-              --title "CCS ${version}" \
-              --notes "$(cat <<-EOF
-          ## Code Composer Studio v${version}
-
-          This release uses the pre-built Docker image with CCS **${version}** from [docker-ccstudio-ide](https://github.com/uoohyo/docker-ccstudio-ide).
-
-          ### Usage
-
-          \`\`\`yaml
-          - uses: uoohyo/action-ccstudio-ide@${TAG}
-            with:
-              project-path: 'path/to/project'
-              project-name: 'YourProject'
-              build-config: 'Debug'
-              components: 'PF_C28'
-          \`\`\`
-
-          ### What's Changed
-
-          - CCS Version: **${version}**
-          - Base Image: \`uoohyo/ccstudio-ide:${version}\`
-          - Docker Hub: https://hub.docker.com/r/uoohyo/ccstudio-ide/tags
-
-          ### Installation
-
-          CCS is installed when the container starts from the pre-downloaded installer. The Docker image does not contain a pre-installed CCS runtime.
-          EOF
-          )" || {
-              echo "Failed to create release for $TAG"
-              continue
-            }
-
-            echo "✅ Created tag and release: $TAG"
-
-          done <<< "$NEW_VERSIONS"
-
-          echo "Tag creation complete!"
-
-      - name: Repair missing releases for existing version tags
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          AVAILABLE_VERSIONS: ${{ steps.fetch-versions.outputs.versions }}
-        run: |
-          set -euo pipefail
-          while IFS= read -r version; do
-            [ -z "$version" ] && continue
-            # Versions come from the confirmed available-image documentation.
-            [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "::error::Invalid version: $version"; exit 1; }
-            TAG="v$version"
-            if ! git rev-parse --verify "refs/tags/$TAG" >/dev/null 2>&1; then
-              echo "::warning::Release tag $TAG does not exist; inspect version-tag creation."
-              continue
-            fi
-            if gh release view "$TAG" >/dev/null 2>&1; then
-              continue
-            fi
-            echo "Restoring GitHub Release for existing tag $TAG"
-            gh release create "$TAG" --verify-tag --title "CCS $version" \
-              --notes "CCS $version using Docker image uoohyo/ccstudio-ide:$version"
-          done <<< "$AVAILABLE_VERSIONS"
-
-      - name: Update version aliases
-        if: steps.new-versions.outputs.count > 0
-        run: |
-          echo "Updating version aliases (v20, v20.5, etc.)..."
-
-          # Configure git
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-
-          # Get all version tags
-          ALL_VERSIONS=$(git tag -l 'v[0-9]*.[0-9]*.[0-9]*.[0-9]*' | sed 's/^v//' | sort -V)
-
-          # Track which aliases we've already updated
-          declare -A UPDATED_MAJOR
-          declare -A UPDATED_MINOR
-
-          # Process versions in reverse (newest first)
-          while IFS= read -r version; do
-            MAJOR=$(echo "$version" | cut -d. -f1)
-            MINOR=$(echo "$version" | cut -d. -f2)
-            PATCH=$(echo "$version" | cut -d. -f3)
-
-            MAJOR_TAG="v${MAJOR}"
-            MINOR_TAG="v${MAJOR}.${MINOR}"
-            PATCH_TAG="v${MAJOR}.${MINOR}.${PATCH}"
-            FULL_TAG="v${version}"
-
-            # Get the commit that the full version tag points to
-            TARGET_COMMIT=$(git rev-parse "${FULL_TAG}^{commit}")
-
-            # Update major tag (e.g., v20) - only once for the latest version
-            # Point to the same commit as the full version tag
-            if [ -z "${UPDATED_MAJOR[$MAJOR]}" ]; then
-              echo "Updating $MAJOR_TAG -> v${version} (commit: ${TARGET_COMMIT:0:7})"
-              git tag -f -a "$MAJOR_TAG" -m "Latest CCS v${MAJOR}.x: ${version}" "$TARGET_COMMIT"
-              git push -f origin "$MAJOR_TAG"
-              UPDATED_MAJOR[$MAJOR]=1
-            fi
-
-            # Update minor tag (e.g., v20.5) - only once for the latest patch
-            # Point to the same commit as the full version tag
-            if [ -z "${UPDATED_MINOR[${MAJOR}.${MINOR}]}" ]; then
-              echo "Updating $MINOR_TAG -> v${version} (commit: ${TARGET_COMMIT:0:7})"
-              git tag -f -a "$MINOR_TAG" -m "Latest CCS v${MAJOR}.${MINOR}.x: ${version}" "$TARGET_COMMIT"
-              git push -f origin "$MINOR_TAG"
-              UPDATED_MINOR[${MAJOR}.${MINOR}]=1
-            fi
-
-            # Update patch tag (e.g., v20.5.1) - always update to latest build
-            # Point to the same commit as the full version tag
-            echo "Updating $PATCH_TAG -> v${version} (commit: ${TARGET_COMMIT:0:7})"
-            git tag -f -a "$PATCH_TAG" -m "Latest CCS v${MAJOR}.${MINOR}.${PATCH}.x: ${version}" "$TARGET_COMMIT"
-            git push -f origin "$PATCH_TAG"
-
-          done <<< "$(echo "$ALL_VERSIONS" | tac)"  # Reverse to process newest first
-
-          # Update 'latest' tag to point to the newest version's commit
-          LATEST_VERSION=$(echo "$ALL_VERSIONS" | tail -1)
-          if [ -n "$LATEST_VERSION" ]; then
-            LATEST_TAG="v${LATEST_VERSION}"
-            LATEST_COMMIT=$(git rev-parse "${LATEST_TAG}^{commit}")
-            echo "Updating latest -> v${LATEST_VERSION} (commit: ${LATEST_COMMIT:0:7})"
-            git tag -f -a "latest" -m "Latest CCS version: ${LATEST_VERSION}" "$LATEST_COMMIT"
-            git push -f origin "latest"
-            echo "✅ 'latest' tag updated to v${LATEST_VERSION}"
+          git fetch --tags origin
+          REFRESH_ARGS=()
+          if [ "$EXISTING_ONLY" = "true" ]; then
+            REFRESH_ARGS+=(--existing-only)
           fi
-
-          echo "✅ Version aliases updated!"
+          if [ "$REFRESH_EXISTING" = "true" ]; then
+            REFRESH_ARGS+=(--refresh-existing --selected-versions "$SELECTED_VERSIONS" --backup-id "$BACKUP_ID")
+          fi
+          python3 .github/scripts/sync_versions.py --kind ccs --versions-file /tmp/versions.md "${REFRESH_ARGS[@]}"
+      - name: Preserve reconciliation results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: version-sync-results
+          path: |
+            sync-results.json
+            refresh-ledger.json
+          if-no-files-found: warn
+          retention-days: 90
 
       - name: Update README badge
-        if: steps.fetch-versions.outputs.count > 0
         run: |
+          VERSIONS=$(python3 -c "import sys; sys.path.insert(0, '.github/scripts'); from sync_versions import available_versions; print('\n'.join(available_versions(open('/tmp/versions.md').read(), 4)))")
           # Get oldest and newest versions from all fetched versions
-          OLDEST=$(echo "${{ steps.fetch-versions.outputs.versions }}" | head -1)
-          NEWEST=$(echo "${{ steps.fetch-versions.outputs.versions }}" | tail -1)
+          OLDEST=$(echo "$VERSIONS" | head -1)
+          NEWEST=$(echo "$VERSIONS" | tail -1)
 
           if [ -z "$OLDEST" ] || [ -z "$NEWEST" ]; then
             echo "⚠️ Could not determine version range, skipping README update"
@@ -314,24 +98,4 @@ jobs:
             echo "✅ README badge updated"
           else
             echo "ℹ️ README badge already up to date"
-          fi
-
-      - name: Summary
-        if: always()
-        run: |
-          echo "## 🔄 Sync Summary" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "- **Total CCS versions available**: ${{ steps.fetch-versions.outputs.count }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **New versions tagged**: ${{ steps.new-versions.outputs.count || 0 }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Trigger**: ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
-
-          if [ "${{ steps.new-versions.outputs.count || 0 }}" -gt 0 ]; then
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "### ✨ New Versions Created" >> $GITHUB_STEP_SUMMARY
-            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-            echo "${{ steps.new-versions.outputs.new }}" >> $GITHUB_STEP_SUMMARY
-            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "✅ All versions are up to date. No new tags created." >> $GITHUB_STEP_SUMMARY
           fi

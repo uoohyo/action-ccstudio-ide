@@ -1,5 +1,5 @@
 #!/bin/bash
-set -e
+set -eo pipefail
 
 # Banner
 cat << 'EOF'
@@ -26,7 +26,7 @@ if [ -z "${CCS_VERSION}" ] || [ "${CCS_VERSION}" = "latest" ]; then
     # Fallback: detect from pre-extracted installer directory in base image
     if [ -d "/opt/ccs-installer" ]; then
         # Find the CCS installer directory (format: CCS_20.5.0.00028_linux or CCS20.5.0.00028_linux-x64)
-        INSTALLER_DIR=$(find /opt/ccs-installer -maxdepth 1 -type d -name "CCS*" | head -1)
+        INSTALLER_DIR=$(find /opt/ccs-installer -maxdepth 1 -type d -name "CCS*" | sed -n '1p')
         if [ -n "$INSTALLER_DIR" ]; then
             # Extract version from directory name
             # Examples: CCS_20.5.0.00028_linux → 20.5.0.00028
@@ -146,7 +146,7 @@ else
     else
         # v7-v9: old BitRock installer
         echo ">>> Note: --enable-components is not supported for CCS v9 and below. Installing all components."
-        INSTALLER_BIN=$(find "/opt/ccs-installer/CCS${VER}_linux-x64" -maxdepth 1 \( -name "*.bin" -o -name "*.run" \) | sort | head -1)
+        INSTALLER_BIN=$(find "/opt/ccs-installer/CCS${VER}_linux-x64" -maxdepth 1 \( -name "*.bin" -o -name "*.run" \) | sort | sed -n '1p')
         if [ "${MAJOR_VER}" -le 8 ]; then
             export JAVA_TOOL_OPTIONS=-Xss1280k
             DISPLAY=:99 "${INSTALLER_BIN}" \
@@ -197,7 +197,7 @@ if [ "${CCS_VERSION}" = "20.0.0.00012" ] || \
     ln -sf /opt/ti/ccs/eclipse/plugins /home/plugins
 
     # Fix 3: Add Node.js to system PATH
-    NODE_PATH=$(find /opt/ti/ccs -name node -type f -executable 2>/dev/null | head -1)
+    NODE_PATH=$(find /opt/ti/ccs -name node -type f -executable 2>/dev/null | sed -n '1p')
     if [ -n "$NODE_PATH" ]; then
         ln -sf "$NODE_PATH" /usr/local/bin/node
         echo "  Node.js: $($NODE_PATH --version) -> /usr/local/bin/node"
