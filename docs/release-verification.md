@@ -41,8 +41,9 @@ must follow the repository owner's approval and least-privilege requirements.
 
 ## Retry and tag safety
 
-- Full toolchain-version tags are immutable. Reconciliation does not repoint them
-  to newer Action code; this requires a separate Action revision release policy.
+- Automatic reconciliation preserves existing full toolchain-version tags. It does
+  not repoint them to newer Action code. Publishing a new revision or deliberately
+  republishing selected existing refs requires a separate owner decision and tests.
 - Missing Releases and aliases are repaired even with no new toolchain version.
 - Existing valid aliases are not rewritten. Alias updates use a remote ref lease;
   conflicting publishers cause a visible failure instead of silent overwriting.
